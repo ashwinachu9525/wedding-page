@@ -1,0 +1,112 @@
+@import "tailwindcss";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans), system-ui, sans-serif;
+  --font-serif: var(--font-serif), Georgia, serif;
+  
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  /* Warm luxury neutral palette inspired by high-end editorial magazines */
+  --background: oklch(0.985 0.005 85); /* Alabaster warm cream #FAF8F5 */
+  --foreground: oklch(0.22 0.01 60); /* Deep charcoal stone #22201E */
+  
+  --card: oklch(0.995 0.003 85); /* Pure warm ivory */
+  --card-foreground: oklch(0.22 0.01 60);
+  
+  --popover: oklch(0.995 0.003 85);
+  --popover-foreground: oklch(0.22 0.01 60);
+  
+  --primary: oklch(0.25 0.015 55); /* Sophisticated dark taupe obsidian */
+  --primary-foreground: oklch(0.985 0.005 85);
+  
+  --secondary: oklch(0.94 0.01 85); /* Soft champagne stone */
+  --secondary-foreground: oklch(0.28 0.015 60);
+  
+  --muted: oklch(0.95 0.008 85);
+  --muted-foreground: oklch(0.55 0.01 70); /* Warm gray */
+  
+  --accent: oklch(0.92 0.015 75); /* Subtle champagne gold accent */
+  --accent-foreground: oklch(0.22 0.01 60);
+  
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.90 0.01 80); /* Soft taupe border */
+  --input: oklch(0.90 0.01 80);
+  --ring: oklch(0.60 0.015 70);
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: oklch(0.16 0.01 60); /* Deep midnight obsidian */
+  --foreground: oklch(0.95 0.005 85);
+  --card: oklch(0.20 0.01 60);
+  --card-foreground: oklch(0.95 0.005 85);
+  --popover: oklch(0.20 0.01 60);
+  --popover-foreground: oklch(0.95 0.005 85);
+  --primary: oklch(0.95 0.005 85);
+  --primary-foreground: oklch(0.16 0.01 60);
+  --secondary: oklch(0.25 0.01 60);
+  --secondary-foreground: oklch(0.95 0.005 85);
+  --muted: oklch(0.25 0.01 60);
+  --muted-foreground: oklch(0.68 0.01 70);
+  --accent: oklch(0.28 0.015 65);
+  --accent-foreground: oklch(0.95 0.005 85);
+  --border: oklch(0.28 0.01 60);
+  --input: oklch(0.28 0.01 60);
+  --ring: oklch(0.55 0.01 70);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-[#E2DCD3] selection:text-[#1A1816];
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-serif), Georgia, serif;
+    font-weight: 400;
+  }
+}
+
+/* Custom refined scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(0.85 0.01 80);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.70 0.01 75);
+}
+
+/* Subtle image zoom hover for photography editorial feel */
+.editorial-image {
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.editorial-image:hover {
+  transform: scale(1.03);
+}
