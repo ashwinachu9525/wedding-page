@@ -19,6 +19,9 @@ const ADSENSE_PUBLISHER_ID = process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID || "";
 export const metadata: Metadata = {
   title: "VivahaLuxe • Royal Wedding Invitations & SEO Celebrations",
   description: "Next-generation autonomous AI wedding invitation platform with custom SEO slugs and dynamic themes.",
+  verification: {
+    google: "f2324e683211ff35",
+  },
 };
 const isRealAdSense = ADSENSE_PUBLISHER_ID && !ADSENSE_PUBLISHER_ID.includes("XXXX");
 
