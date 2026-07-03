@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
-import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -39,20 +38,19 @@ export default function RootLayout({
         {isRealAdSense && (
           <meta name="google-adsense-account" content={ADSENSE_PUBLISHER_ID} />
         )}
+        {/* Google AdSense — plain script tag required; Next.js Script adds data-nscript which AdSense rejects */}
+        {isRealAdSense && (
+          // eslint-disable-next-line @next/next/no-sync-scripts
+          <script
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`}
+            crossOrigin="anonymous"
+          />
+        )}
       </head>
       <body className="min-h-full flex flex-col">
         {children}
         <Toaster position="top-right" richColors closeButton expand theme="light" />
-        {/* Google AdSense — loaded only when a real publisher ID is configured */}
-        {isRealAdSense && (
-          <Script
-            id="google-adsense"
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`}
-            crossOrigin="anonymous"
-            strategy="afterInteractive"
-          />
-        )}
       </body>
     </html>
   );
