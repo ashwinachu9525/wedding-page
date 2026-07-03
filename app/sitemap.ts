@@ -1,5 +1,5 @@
 import { MetadataRoute } from "next";
-import prisma from "@/lib/prisma";
+import { getPrismaClient } from "@/lib/prisma";
 
 const BASE_URL =
   process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
@@ -36,20 +36,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Dynamic invitation pages — only published ones
   let invitationRoutes: MetadataRoute.Sitemap = [];
-  try {
-    const invitations = await prisma.invitation.findMany({
-      where: { isPublished: true },
-      select: { slug: true, updatedAt: true },
-    });
+  const prisma = getPrismaClient();
+  
+  if (prisma) {
+    try {
+      const invitations = await prisma.invitation.findMany({
+        where: { isPublished: true },
+        select: { slug: true, updatedAt: true },
+      });
 
-    invitationRoutes = invitations.map((inv) => ({
-      url: `${BASE_URL}/invite/${inv.slug}`,
-      lastModified: inv.updatedAt,
-      changeFrequency: "weekly" as const,
-      priority: 0.8,
-    }));
-  } catch (error) {
-    console.error("Sitemap: failed to fetch invitations", error);
+      invitationRoutes = invitations.map((inv) => ({
+        url: `${BASE_URL}/invite/${inv.slug}`,
+        lastModified: inv.updatedAt,
+        changeFrequency: "weekly" as const,
+        priority: 0.8,
+      }));
+    } catch (error) {
+      console.error("Sitemap: failed to fetch invitations", error);
+    }
   }
 
   return [...staticRoutes, ...invitationRoutes];
