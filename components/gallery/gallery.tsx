@@ -2,137 +2,131 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { useMedia } from "@/lib/media-context";
-import { GalleryImage } from "@/types/wedding";
-import Lightbox from "yet-another-react-lightbox";
-import "yet-another-react-lightbox/styles.css";
-import { Maximize2 } from "lucide-react";
+import { Camera, X, ZoomIn, Sparkles, Filter } from "lucide-react";
 
-const categories = [
-  { id: "all", label: "All Portfolio" },
-  { id: "mehendi", label: "Mehendi & Sangeet" },
-  { id: "ceremony", label: "Muhurtham" },
-  { id: "reception", label: "Reception Gala" },
-  { id: "engagement", label: "Engagement & Portraits" },
-];
+export interface GalleryImage {
+  src: string;
+  caption?: string;
+  category?: "ceremony" | "reception" | "portraits" | "engagement" | "all";
+}
 
-export function GallerySection() {
-  const { photos } = useMedia();
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [index, setIndex] = useState(-1);
+interface GallerySectionProps {
+  images?: Array<string | GalleryImage>;
+  accentClass?: string;
+}
 
-  const filteredPhotos =
-    selectedCategory === "all"
-      ? photos
-      : photos.filter((photo) =>
-          selectedCategory === "engagement"
-            ? photo.category === "engagement" || photo.category === "portraits"
-            : selectedCategory === "mehendi"
-            ? photo.category === "mehendi" || photo.category === "sangeet"
-            : photo.category === selectedCategory
-        );
+export function GallerySection({
+  images = [
+    { src: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=1974&auto=format&fit=crop", caption: "Sacred Mandap Setup", category: "ceremony" },
+    { src: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1974&auto=format&fit=crop", caption: "Evening Gala Toast", category: "reception" },
+    { src: "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=2070&auto=format&fit=crop", caption: "Sunset Engagement", category: "engagement" },
+    { src: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?q=80&w=2070&auto=format&fit=crop", caption: "Royal Portraits", category: "portraits" },
+    { src: "https://images.unsplash.com/photo-1545232972-9bb88a5b6dcc?q=80&w=2070&auto=format&fit=crop", caption: "Vedic Traditions", category: "ceremony" },
+    { src: "https://images.unsplash.com/photo-1606800052052-a08af7148866?q=80&w=2070&auto=format&fit=crop", caption: "First Dance", category: "reception" },
+  ],
+  accentClass = "text-[#D4AF37]",
+}: GallerySectionProps) {
+  const [selectedImg, setSelectedImg] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string>("all");
 
-  const slides = filteredPhotos.map((p) => ({
-    src: p.src,
-    title: p.caption || p.alt,
-    description: p.alt,
-    width: p.width,
-    height: p.height,
-  }));
+  if (!images || images.length === 0) return null;
+
+  // Normalize image data
+  const normalizedImages: GalleryImage[] = images.map((img) => {
+    if (typeof img === "string") {
+      return { src: img, caption: "Sacred Moment", category: "ceremony" };
+    }
+    return {
+      src: img.src,
+      caption: img.caption || "Sacred Moment",
+      category: img.category || "ceremony",
+    };
+  });
+
+  const filteredImages =
+    activeFilter === "all"
+      ? normalizedImages
+      : normalizedImages.filter((img) => img.category === activeFilter);
+
+  const categories = ["all", "ceremony", "reception", "portraits", "engagement"];
 
   return (
-    <section id="gallery" className="py-24 md:py-36 bg-[#FAF8F5]">
-      <div className="max-w-7xl mx-auto px-6 md:px-12">
-        {/* Section Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-xs uppercase tracking-[0.3em] text-[#88837E] block mb-3">
-            Captured Memories
-          </span>
-          <h2 className="font-serif text-4xl md:text-6xl text-[#22201E] tracking-tight mb-6">
-            Visual Journal
-          </h2>
-          <div className="w-16 h-[1px] bg-[#C4B7A6] mx-auto mb-6" />
-          <p className="font-serif italic text-lg md:text-xl text-[#66625D] leading-relaxed">
-            Glimpses into our journey and the editorial inspiration shaping our wedding weekend.
-          </p>
+    <section id="gallery" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto space-y-12">
+      <div className="text-center space-y-4">
+        <div className="flex items-center justify-center gap-2">
+          <Sparkles className={`w-4 h-4 ${accentClass}`} />
+          <span className="text-xs uppercase tracking-[0.3em] opacity-75">Bespoke Editorial Feature</span>
+          <Sparkles className={`w-4 h-4 ${accentClass}`} />
         </div>
+        <h2 className="font-serif text-3xl sm:text-5xl uppercase tracking-wide">Masonry Photo Portfolio</h2>
+        <p className="text-xs uppercase tracking-widest opacity-70">Filter moments by celebration milestone</p>
 
-        {/* Category Filter Pills */}
-        <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 mb-16">
-          {categories.map((cat) => {
-            const isActive = selectedCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-5 py-2 text-xs uppercase tracking-[0.2em] transition-all duration-300 rounded-full border ${
-                  isActive
-                    ? "bg-[#22201E] text-[#FAF8F5] border-[#22201E] shadow-xs"
-                    : "bg-transparent text-[#66625D] border-[#E8E2D9] hover:border-[#22201E] hover:text-[#22201E]"
-                }`}
-              >
-                {cat.label}
-              </button>
-            );
-          })}
+        {/* Filter Bar */}
+        <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setActiveFilter(cat)}
+              className={`px-4 py-1.5 rounded-full text-xs uppercase tracking-wider font-semibold border transition-all ${
+                activeFilter === cat
+                  ? "bg-[#D4AF37] text-[#141311] border-[#D4AF37] font-bold shadow-md"
+                  : "border-current/20 opacity-70 hover:opacity-100"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
-
-        {/* Responsive Editorial Masonry Grid */}
-        <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
-          {filteredPhotos.map((photo, idx) => {
-            return (
-              <div
-                key={photo.id}
-                onClick={() => setIndex(idx)}
-                className="break-inside-avoid relative group overflow-hidden rounded-sm bg-[#F0EBE3] cursor-pointer shadow-xs hover:shadow-md transition-all duration-500"
-              >
-                <div
-                  className="relative w-full overflow-hidden"
-                  style={{
-                    aspectRatio: `${photo.width} / ${photo.height}`,
-                  }}
-                >
-                  <Image
-                    src={photo.src}
-                    alt={photo.alt}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-cover editorial-image"
-                    loading="lazy"
-                  />
-                </div>
-
-                {/* Hover Caption & Lightbox Trigger */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6 text-white">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] uppercase tracking-[0.2em] text-[#C4B7A6] block">
-                        {photo.category}
-                      </span>
-                      <p className="font-serif italic text-base mt-1">
-                        {photo.caption || photo.alt}
-                      </p>
-                    </div>
-                    <div className="p-2.5 rounded-full bg-white/20 backdrop-blur-md text-white">
-                      <Maximize2 className="w-4 h-4" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Lightbox Modal */}
-        <Lightbox
-          index={index}
-          open={index >= 0}
-          close={() => setIndex(-1)}
-          slides={slides}
-          controller={{ closeOnBackdropClick: true }}
-          animation={{ fade: 300, swipe: 250 }}
-        />
       </div>
+
+      {/* Masonry Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredImages.map((item, idx) => (
+          <div
+            key={idx}
+            onClick={() => setSelectedImg(item.src)}
+            className="group relative aspect-4/3 rounded-sm overflow-hidden border border-current/15 cursor-pointer shadow-xs hover:shadow-xl transition-all bg-black/5"
+          >
+            <Image
+              src={item.src}
+              alt={item.caption || `Celebration Moment ${idx + 1}`}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-700"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] uppercase tracking-widest text-amber-300 font-semibold">
+                    {item.category}
+                  </span>
+                  <p className="font-serif text-lg leading-tight">{item.caption}</p>
+                </div>
+                <span className="p-2.5 rounded-full bg-white/20 backdrop-blur-md text-white shadow-lg shrink-0">
+                  <ZoomIn className="w-4 h-4" />
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Lightbox Modal */}
+      {selectedImg && (
+        <div
+          onClick={() => setSelectedImg(null)}
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+        >
+          <button
+            onClick={() => setSelectedImg(null)}
+            className="absolute top-6 right-6 p-3 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors z-50"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <div className="relative max-w-5xl max-h-[85vh] w-full h-full">
+            <Image src={selectedImg} alt="Expanded Lightbox View" fill className="object-contain" />
+          </div>
+        </div>
+      )}
     </section>
   );
 }

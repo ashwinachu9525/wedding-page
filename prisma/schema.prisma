@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String       @id @default(cuid())
+  name          String?
+  email         String?      @unique
+  username      String?      @unique
+  password      String?
+  role          String       @default("USER") // USER or SUPER_ADMIN
+  status        String       @default("ACTIVE") // ACTIVE or SUSPENDED
+  provider      String       @default("credentials") // credentials or google
+  image         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  invitations   Invitation[]
+}
+
+model Invitation {
+  id            String       @id @default(cuid())
+  slug          String       @unique
+  userId        String?
+  user          User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String       @default("The Royal Wedding Celebration")
+  coupleNames   String       @default("Aswin K & Annapoorna")
+  brideDetails  String       @default("Daughter of Sri K. Ramachandran & Smt. Lakshmi Devi")
+  groomDetails  String       @default("Son of Sri V. Krishnan & Smt. Saraswathi")
+  weddingDate   String       @default("2026-11-21T10:30:00")
+  weddingDateDisplay String  @default("November 21–22, 2026")
+  venueName     String       @default("The Tamarind Tree & The Leela Palace")
+  venueAddress  String       @default("Bangalore, Karnataka, India")
+  mapUrl        String       @default("https://maps.google.com")
+  story         String       @default("Two paths crossed under the Bangalore skies, blossoming into a lifelong bond of love, laughter, and heritage.")
+  theme         String       @default("alabaster") // alabaster, velvet, emerald, rose, marigold, mysore, crimson, ivory, peacock, lotus, sandalwood, banarasi
+  musicUrl      String?      @default("https://assets.mixkit.co/music/preview/mixkit-romantic-wedding-piano-136.mp3")
+  isPublished   Boolean      @default(true)
+  viewCount     Int          @default(142)
+  eventsJson    String       @default("[{\"name\":\"Haldi & Mehendi\",\"time\":\"Nov 20, 4:00 PM\",\"venue\":\"Tamarind Tree Gardens\"},{\"name\":\"Muhurtham Ceremony\",\"time\":\"Nov 21, 9:30 AM\",\"venue\":\"Tamarind Tree Main Hall\"},{\"name\":\"Grand Reception Gala\",\"time\":\"Nov 22, 7:00 PM\",\"venue\":\"The Leela Palace Ballroom\"}]")
+  galleryJson   String       @default("[\"https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=1974&auto=format&fit=crop\",\"https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1974&auto=format&fit=crop\",\"https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=2070&auto=format&fit=crop\"]")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  rsvps         Rsvp[]
+}
+
+model Rsvp {
+  id            String       @id @default(cuid())
+  invitationId  String?
+  invitation    Invitation?  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  guestName     String
+  attending     String       @default("yes")
+  guestsCount   Int          @default(1)
+  dietary       String?
+  events        String?      @default("Muhurtham, Reception")
+  phone         String?
+  createdAt     DateTime     @default(now())
+}
+
+model SupportTicket {
+  id            String       @id @default(cuid())
+  name          String
+  emailOrPhone  String
+  message       String
+  status        String       @default("OPEN")
+  createdAt     DateTime     @default(now())
+}

@@ -1,48 +1,42 @@
-import { coupleInfo, weddingEvents } from "@/data/wedding-data";
+import React from "react";
 
-export function WeddingJsonLd() {
-  const mainEvent = weddingEvents.find((e) => e.featured) || weddingEvents[0];
+interface WeddingJsonLdProps {
+  coupleNames?: string;
+  weddingDate?: string;
+  venueName?: string;
+  venueAddress?: string;
+  story?: string;
+}
 
-  const jsonLdData = {
+export function WeddingJsonLd({
+  coupleNames = "Aswin K & Annapoorna",
+  weddingDate = "2026-11-21T10:30:00",
+  venueName = "The Tamarind Tree & The Leela Palace",
+  venueAddress = "Bangalore, Karnataka, India",
+  story = "The Royal Wedding Celebration of Aswin & Annapoorna",
+}: WeddingJsonLdProps) {
+  const schemaData = {
     "@context": "https://schema.org",
-    "@type": "Event",
-    name: `${coupleInfo.names} Wedding Celebration`,
-    startDate: coupleInfo.weddingDateISO,
-    endDate: "2026-10-18T23:59:00.000Z",
-    eventStatus: "https://schema.org/EventScheduled",
-    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    "@type": "SocialEvent",
+    name: `Wedding Celebration of ${coupleNames}`,
+    startDate: weddingDate,
     location: {
       "@type": "Place",
-      name: mainEvent.venueName,
+      name: venueName,
       address: {
         "@type": "PostalAddress",
-        streetAddress: mainEvent.address,
-        addressLocality: mainEvent.city,
-        addressCountry: "Italy",
+        addressLocality: venueAddress,
       },
     },
-    image: [coupleInfo.heroFallbackImage],
-    description: coupleInfo.welcomeMessage,
-    organizer: {
-      "@type": "Person",
-      name: coupleInfo.names,
-    },
-    performer: [
-      {
-        "@type": "Person",
-        name: coupleInfo.fullNames.partner1,
-      },
-      {
-        "@type": "Person",
-        name: coupleInfo.fullNames.partner2,
-      },
-    ],
+    description: story,
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    eventStatus: "https://schema.org/EventScheduled",
   };
 
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }}
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
     />
   );
 }

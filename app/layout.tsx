@@ -1,72 +1,26 @@
-import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Plus_Jakarta_Sans } from "next/font/google";
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
+import Script from "next/script";
 import "./globals.css";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { coupleInfo } from "@/data/wedding-data";
-import { MediaProvider } from "@/lib/media-context";
 
-const cormorant = Cormorant_Garamond({
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  style: ["normal", "italic"],
-  variable: "--font-serif",
-  display: "swap",
 });
 
-const plusJakarta = Plus_Jakarta_Sans({
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  variable: "--font-sans",
-  display: "swap",
 });
-
-export const viewport: Viewport = {
-  themeColor: "#FAF8F5",
-  width: "device-width",
-  initialScale: 1,
-};
 
 export const metadata: Metadata = {
-  title: `${coupleInfo.names} | Wedding Celebration in ${coupleInfo.locationDisplay}`,
-  description: coupleInfo.welcomeMessage,
-  keywords: [
-    "Wedding",
-    coupleInfo.firstNames.partner1,
-    coupleInfo.firstNames.partner2,
-    "Lake Como Wedding",
-    "Villa Balbiano",
-    "Luxury Wedding Website",
-  ],
-  authors: [{ name: coupleInfo.names }],
-  openGraph: {
-    title: `${coupleInfo.names} — ${coupleInfo.headline}`,
-    description: coupleInfo.welcomeMessage,
-    url: "https://aswin-and-annapoorna.com",
-    siteName: `${coupleInfo.names} Wedding`,
-    images: [
-      {
-        url: coupleInfo.heroFallbackImage,
-        width: 1200,
-        height: 630,
-        alt: `${coupleInfo.names} Wedding in Lake Como`,
-      },
-    ],
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: `${coupleInfo.names} — Wedding Celebration`,
-    description: coupleInfo.welcomeMessage,
-    images: [coupleInfo.heroFallbackImage],
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  title: "VivahaLuxe • Royal Wedding Invitations & SEO Celebrations",
+  description: "Next-generation autonomous AI wedding invitation platform with custom SEO slugs and dynamic themes.",
 };
 
-import { Toaster } from "sonner";
+const ADSENSE_PUBLISHER_ID = process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID || "";
+const isRealAdSense = ADSENSE_PUBLISHER_ID && !ADSENSE_PUBLISHER_ID.includes("XXXX");
 
 export default function RootLayout({
   children,
@@ -76,15 +30,26 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${cormorant.variable} ${plusJakarta.variable} scroll-smooth antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-screen bg-[#FAF8F5] text-[#22201E] font-sans selection:bg-[#E8E2D9] selection:text-[#1F1D1A]">
-        <MediaProvider>
-          <TooltipProvider delay={200}>
-            {children}
-            <Toaster position="bottom-right" richColors />
-          </TooltipProvider>
-        </MediaProvider>
+      <head>
+        {isRealAdSense && (
+          <meta name="google-adsense-account" content={ADSENSE_PUBLISHER_ID} />
+        )}
+      </head>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Toaster position="top-right" richColors closeButton expand theme="light" />
+        {/* Google AdSense — loaded only when a real publisher ID is configured */}
+        {isRealAdSense && (
+          <Script
+            id="google-adsense"
+            async
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`}
+            crossOrigin="anonymous"
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );
