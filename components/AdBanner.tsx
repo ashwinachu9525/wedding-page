@@ -9,9 +9,9 @@ interface AdBannerProps {
 
 const PUBLISHER_ID = process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID || "ca-pub-XXXXXXXXXXXXXXXX";
 const SLOT_MAP: Record<string, string> = {
-  landing: process.env.NEXT_PUBLIC_ADSENSE_SLOT_LANDING || "1234567890",
+  landing: process.env.NEXT_PUBLIC_ADSENSE_SLOT_LANDING || "7677483495",
   admin: process.env.NEXT_PUBLIC_ADSENSE_SLOT_ADMIN || "0987654321",
-  footer: process.env.NEXT_PUBLIC_ADSENSE_SLOT_LANDING || "1234567890",
+  footer: process.env.NEXT_PUBLIC_ADSENSE_SLOT_LANDING || "7677483495",
   sidebar: process.env.NEXT_PUBLIC_ADSENSE_SLOT_ADMIN || "0987654321",
 };
 
