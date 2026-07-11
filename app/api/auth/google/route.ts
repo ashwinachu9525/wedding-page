@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     const email = payload.email as string | undefined;
     const name = (payload.name as string) || (payload.given_name as string) || null;
     const picture = (payload.picture as string) || null;
-    const email_verified = payload.email_verified === "true" || payload.email_verified === true;
+    const email_verified = Boolean(payload.email_verified);
 
     if (!email) return NextResponse.json({ error: "Google token did not include an email" }, { status: 400 });
 

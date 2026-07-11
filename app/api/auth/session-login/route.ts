@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
         name: user.name || user.email!,
         role: user.role,
         provider: user.provider || "credentials",
-        slug: firstInvite?.slug || null,
+        slug: firstInvite?.slug || undefined,
         onboarded,
       };
       const token = await createSessionToken(payload);
@@ -203,12 +203,12 @@ export async function POST(req: NextRequest) {
       }
 
       const payload: SessionPayload = {
-        id: googleUser.id,
-        email: googleUser.email,
-        name: googleUser.name,
+        id: googleUser.id || "",
+        email: googleUser.email || "",
+        name: googleUser.name || googleUser.email || "User",
         role: googleUser.role || "USER",
         provider: "google",
-        slug: googleUser.slug || null,
+        slug: googleUser.slug || undefined,
         onboarded: !!googleUser.onboarded,
       };
       const token = await createSessionToken(payload);
@@ -274,11 +274,11 @@ export async function POST(req: NextRequest) {
 
       const payload: SessionPayload = {
         id: user.id,
-        email: user.email,
-        name: user.name || user.email,
+        email: user.email || "",
+        name: user.name || user.email || "User",
         role: user.role,
         provider: user.provider || "credentials",
-        slug: firstInvite?.slug || null,
+        slug: firstInvite?.slug || undefined,
         onboarded,
       };
       const token = await createSessionToken(payload);

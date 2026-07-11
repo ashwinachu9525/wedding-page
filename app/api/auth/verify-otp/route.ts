@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         name: updatedUser.name || updatedUser.email!,
         role: updatedUser.role,
         provider: updatedUser.provider || "credentials",
-        slug: firstInvite?.slug || null,
+        slug: firstInvite?.slug || undefined,
         onboarded: !!firstInvite,
       };
 

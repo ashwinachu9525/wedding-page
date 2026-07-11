@@ -3,9 +3,12 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { Sparkles, Calendar, MapPin, Send } from "lucide-react";
+import { formatHeadingText } from "@/lib/fonts";
+import { CoupleNameDisplay } from "@/components/couple-name/couple-name";
 
 interface HeroProps {
   coupleNames?: string;
+  splitCoupleNames?: boolean;
   weddingDate?: string;
   weddingDateDisplay?: string;
   venueName?: string;
@@ -14,10 +17,12 @@ interface HeroProps {
   onOpenRSVP: () => void;
   accentClass?: string;
   themeKey?: string;
+  headingType?: "script" | "serif" | "modern";
 }
 
 export function Hero({
   coupleNames = "Rahul Sharma & Priya Mehta",
+  splitCoupleNames = false,
   weddingDate = "2026-11-21T10:30:00",
   weddingDateDisplay = "November 21–22, 2026",
   venueName = "The Tamarind Tree & The Leela Palace, Bangalore",
@@ -26,6 +31,7 @@ export function Hero({
   onOpenRSVP,
   accentClass = "text-[#D4AF37]",
   themeKey = "alabaster",
+  headingType,
 }: HeroProps) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
@@ -93,8 +99,8 @@ export function Hero({
                 <path d="M10,20 Q30,5 60,20 T110,20 M30,28 Q60,10 90,28 M50,35 Q60,25 70,35" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" />
               </svg>
             </div>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-[#E6C280]/85 font-semibold mb-2">
-              Bismillahir Rahmanir Rahim
+            <p className="text-[28px] uppercase tracking-[0.25em] text-[#E6C280]/85 font-semibold mb-2">
+              بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
             </p>
             <p className="text-[11px] italic tracking-wide opacity-80 max-w-md mx-auto mb-6">
               "With the blessings of Allah, we joyfully invite you to the marriage ceremony of"
@@ -163,17 +169,22 @@ export function Hero({
           </div>
         )}
 
-        <h1 className={`font-serif tracking-tight uppercase font-light leading-none ${
+        <h1 className={`font-serif tracking-tight w-full max-w-5xl mx-auto px-2 ${headingType === "script" ? "font-normal leading-tight" : "uppercase leading-none"} ${
           ["hindu_royal", "arabic_royal", "christian_royal"].includes(themeKey)
             ? "text-3xl sm:text-5xl md:text-6xl my-4"
-            : "text-5xl sm:text-7xl md:text-8xl drop-shadow-lg"
+            : "text-4xl sm:text-6xl md:text-7xl lg:text-8xl"
         }`}>
-          {coupleNames}
+          <CoupleNameDisplay
+            names={coupleNames}
+            headingType={headingType}
+            multiLine={true}
+            splitAmpersand={splitCoupleNames}
+          />
         </h1>
 
         <div className="w-32 h-[1px] bg-current/30 mx-auto my-4" />
 
-        <div className="space-y-3 text-xs sm:text-sm font-serif tracking-wide">
+        <div className="space-y-3 text-xs sm:text-sm font-sans tracking-wide">
           <p className="flex items-center justify-center gap-2 uppercase tracking-[0.25em] font-semibold">
             <Calendar className="w-4 h-4 opacity-80" />
             <span>{weddingDateDisplay}</span>
@@ -194,19 +205,19 @@ export function Hero({
             "bg-black/40 border-white/15"
           }`}>
             <div className="flex flex-col items-center">
-              <span className="text-xl sm:text-3xl font-light font-serif">{timeLeft.days}</span>
+              <span className="text-xl sm:text-3xl font-light font-sans">{timeLeft.days}</span>
               <span className="text-[8px] uppercase tracking-widest opacity-80">Days</span>
             </div>
             <div className="flex flex-col items-center border-l border-current/10">
-              <span className="text-xl sm:text-3xl font-light font-serif">{timeLeft.hours}</span>
+              <span className="text-xl sm:text-3xl font-light font-sans">{timeLeft.hours}</span>
               <span className="text-[8px] uppercase tracking-widest opacity-80">Hours</span>
             </div>
             <div className="flex flex-col items-center border-l border-current/10">
-              <span className="text-xl sm:text-3xl font-light font-serif">{timeLeft.minutes}</span>
+              <span className="text-xl sm:text-3xl font-light font-sans">{timeLeft.minutes}</span>
               <span className="text-[8px] uppercase tracking-widest opacity-80">Mins</span>
             </div>
             <div className="flex flex-col items-center border-l border-current/10">
-              <span className="text-xl sm:text-3xl font-light font-serif">{timeLeft.seconds}</span>
+              <span className="text-xl sm:text-3xl font-light font-sans">{timeLeft.seconds}</span>
               <span className="text-[8px] uppercase tracking-widest opacity-80">Secs</span>
             </div>
           </div>

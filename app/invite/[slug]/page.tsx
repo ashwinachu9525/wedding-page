@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getInvitationBySlug, InvitationData } from "@/lib/mock-storage";
 import { Sparkles, ArrowLeft, MessageCircle } from "lucide-react";
+import { getFontPairingById } from "@/lib/fonts";
 
 import { Navbar } from "@/components/navbar/navbar";
 import { Hero } from "@/components/hero/hero";
@@ -74,6 +75,9 @@ function InviteLandingContent() {
   const searchParams = useSearchParams();
   const guest = searchParams ? searchParams.get("guest") || "" : "";
   const note = searchParams ? searchParams.get("note") || "" : "";
+  const urlEnableAccommodations = searchParams ? searchParams.get("enableAccommodations") : null;
+  const urlAccommodationsTitle = searchParams ? searchParams.get("accommodationsTitle") : null;
+  const urlSplitCoupleNames = searchParams ? searchParams.get("splitCoupleNames") : null;
 
   const slug = (params?.slug as string) || "rahul-priya-2026";
   const [invite, setInvite] = useState<InvitationData | null>(null);
@@ -108,26 +112,48 @@ function InviteLandingContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#141311] flex flex-col items-center justify-center text-[#C4B7A6] p-6 font-serif">
-        <Sparkles className="w-8 h-8 animate-spin mb-4 text-[#D4AF37]" />
-        <p className="text-xl tracking-widest uppercase">Unfolding Sacred Celebration...</p>
+      <div className="min-h-screen bg-[#111111] flex flex-col items-center justify-center text-center px-4">
+        <Sparkles className="w-8 h-8 text-[#D4AF37] animate-spin mb-4" />
+        <p className="font-serif text-[#FAF8F5] tracking-widest uppercase text-xs">Loading Celebration Details...</p>
       </div>
     );
   }
 
   if (!invite) {
     return (
-      <div className="min-h-screen bg-[#141311] flex flex-col items-center justify-center text-[#FAF8F5] p-6 text-center font-serif">
-        <h1 className="text-3xl mb-4">Celebration Not Found</h1>
-        <p className="text-sm text-[#C4B7A6] mb-8 max-w-md">
-          The wedding celebration site you requested might not be published yet or the URL slug is incorrect.
+      <div className="min-h-screen bg-[#111111] flex flex-col items-center justify-center text-center px-4">
+        <h1 className="font-serif text-3xl text-white mb-2">Invitation Not Found</h1>
+        <p className="text-[#A69E94] text-sm max-w-md mb-6">
+          We couldn&apos;t locate the celebration details for &ldquo;{slug}&rdquo;. Please verify the URL or contact the hosts.
         </p>
-        <Link href="/" className="px-6 py-3 bg-[#D4AF37] text-[#141311] uppercase tracking-widest text-xs font-semibold rounded-xs">
-          Return to VivahaLuxe Homepage
+        <Link href="/" className="px-6 py-2.5 bg-[#D4AF37] text-black font-medium text-xs uppercase tracking-widest rounded-full hover:bg-[#E6C280] transition-colors">
+          Return to Hub
         </Link>
       </div>
     );
   }
+
+  const effectiveEnableAccommodations = urlEnableAccommodations !== null
+    ? urlEnableAccommodations === "true"
+    : invite.enableAccommodations !== false;
+
+  const effectiveAccommodationsTitle = urlAccommodationsTitle !== null
+    ? urlAccommodationsTitle
+    : invite.accommodationsTitle;
+
+  const effectiveSplitCoupleNames = urlSplitCoupleNames !== null
+    ? urlSplitCoupleNames === "true"
+    : Boolean(invite.splitCoupleNames);
+
+  const urlFont = searchParams ? searchParams.get("fontStyle") || "" : "";
+  const effectiveFontId = urlFont || invite.fontStyle || "cormorant_bickham";
+  const fontPairing = getFontPairingById(effectiveFontId);
+
+  const fontStyles = {
+    "--invitation-heading-font": fontPairing.headingFont,
+    "--invitation-body-font": fontPairing.bodyFont,
+    "--heading-scale": fontPairing.scaleAdjustment || 1.0,
+  } as React.CSSProperties;
 
   const themeKey = (invite.theme as ThemeKey) in THEME_STYLES ? (invite.theme as ThemeKey) : "alabaster";
   const styles = THEME_STYLES[themeKey];
@@ -168,7 +194,11 @@ function InviteLandingContent() {
     : "";
 
   return (
-    <div className={`min-h-screen ${styles.bg} ${styles.text} overflow-x-hidden transition-colors duration-500`}>
+    <div
+      className={`invitation-container min-h-screen ${styles.bg} ${styles.text} overflow-x-hidden transition-colors duration-500`}
+      style={fontStyles}
+      data-heading-type={fontPairing.headingType || "serif"}
+    >
       {/* SEO Structured Data */}
       <WeddingJsonLd
         coupleNames={invite.coupleNames}
@@ -179,12 +209,12 @@ function InviteLandingContent() {
       />
 
       {/* Floating Back to Hub Banner */}
-      <div className="bg-black/80 text-white text-[11px] uppercase tracking-widest py-1.5 px-4 flex items-center justify-between z-50 relative">
+      <div className="bg-black/90 text-white text-[11px] uppercase tracking-widest py-2 px-4 flex items-center justify-between z-50 relative border-b border-white/10">
         <Link href="/" className="hover:underline flex items-center gap-1 opacity-80 hover:opacity-100">
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>VivahaLuxe Hub</span>
         </Link>
-        <span>Custom Celebration URL: /invite/{invite.slug}</span>
+        <span className="opacity-60 text-[10px]">Celebration Invitation</span>
       </div>
 
       {/* Personalized Greeting Card Block */}
@@ -212,6 +242,8 @@ function InviteLandingContent() {
         onOpenRSVP={handleOpenRSVP}
         accentClass={styles.accent}
         buttonClass={styles.buttonBg}
+        headingType={fontPairing.headingType}
+        enableAccommodations={effectiveEnableAccommodations}
       />
 
       {/* Main Content Sections */}
@@ -219,6 +251,7 @@ function InviteLandingContent() {
         {/* Full-Screen Video or Cinematic Background Hero */}
         <Hero
           coupleNames={invite.coupleNames}
+          splitCoupleNames={effectiveSplitCoupleNames}
           weddingDate={invite.weddingDate}
           weddingDateDisplay={invite.weddingDateDisplay}
           venueName={invite.venueName}
@@ -227,6 +260,7 @@ function InviteLandingContent() {
           onOpenRSVP={handleOpenRSVP}
           accentClass={styles.accent}
           themeKey={themeKey}
+          headingType={fontPairing.headingType}
         />
 
         {/* Editorial Couple's Story & Timeline */}
@@ -247,6 +281,8 @@ function InviteLandingContent() {
           onOpenRSVP={handleOpenRSVP}
           accentClass={styles.accent}
           buttonClass={styles.buttonBg}
+          enableAccommodations={effectiveEnableAccommodations}
+          accommodationsTitle={effectiveAccommodationsTitle}
         />
 
         {/* Responsive Masonry Photo Gallery with Lightbox */}
@@ -261,9 +297,11 @@ function InviteLandingContent() {
       {/* FAQ & Editorial Footer */}
       <FooterSection
         coupleNames={invite.coupleNames}
+        splitCoupleNames={effectiveSplitCoupleNames}
         faqs={parsedFaqs.length > 0 ? parsedFaqs : undefined}
         withRegards={withRegards || undefined}
         accentClass={styles.accent}
+        headingType={fontPairing.headingType}
       />
 
       {/* Interactive RSVP Dialog Modal */}

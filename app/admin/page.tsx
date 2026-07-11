@@ -49,6 +49,7 @@ import {
 import AdBanner from "@/components/AdBanner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { DeleteAccountDialog } from "@/components/ui/delete-account-dialog";
+import { FontSelector } from "@/components/font-selector/font-selector";
 import { type StoryData, DEFAULT_STORY_DATA, STORY_QUOTES, parseStory } from "@/components/story/story";
 
 type ThemeKey =
@@ -199,6 +200,7 @@ export default function AdminPage() {
   const [activePreset, setActivePreset] = useState("rahul-anjali");
   const [slugInput, setSlugInput] = useState("rahul-anjali");
   const [coupleNames, setCoupleNames] = useState("Rahul Sharma & Anjali Mehta");
+  const [splitCoupleNames, setSplitCoupleNames] = useState<boolean>(false);
   const [brideDetails, setBrideDetails] = useState("Daughter of Dr. Rajesh Mehta & Smt. Sunita Mehta");
   const [groomDetails, setGroomDetails] = useState("Son of Sri Suresh Sharma & Smt. Anita Sharma");
   const [weddingDate, setWeddingDate] = useState("2026-12-14T11:00");
@@ -206,9 +208,12 @@ export default function AdminPage() {
   const [venueName, setVenueName] = useState("Umaid Bhawan Palace & Rambagh Palace");
   const [venueAddress, setVenueAddress] = useState("Jaipur, Rajasthan, India • Partner Hotels: Taj Rambagh & Umaid Heritage");
   const [mapUrl, setMapUrl] = useState("https://maps.google.com/?q=Rambagh+Palace+Jaipur");
+  const [enableAccommodations, setEnableAccommodations] = useState<boolean>(true);
+  const [accommodationsTitle, setAccommodationsTitle] = useState<string>("Accommodations & Venue Directions");
   const [story, setStory] = useState("From college best friends to soulful life partners, our journey is filled with laughter, adventures, and unconditional devotion.");
   const [storyData, setStoryData] = useState<StoryData>({ ...DEFAULT_STORY_DATA });
   const [inviteTheme, setInviteTheme] = useState<ThemeKey>("velvet");
+  const [inviteFontStyle, setInviteFontStyle] = useState<string>("cormorant_bickham");
   const [previewKey, setPreviewKey] = useState(0);
 
   const handleSelectTheme = (themeKey: ThemeKey) => {
@@ -220,6 +225,21 @@ export default function AdminPage() {
       localSaved[cleanSlug] = {
         ...localSaved[cleanSlug],
         theme: themeKey
+      };
+      localStorage.setItem("vivaha_saved_invitations", JSON.stringify(localSaved));
+      setPreviewKey((prev) => prev + 1);
+    } catch (e) {}
+  };
+
+  const handleSelectFont = (fontId: string) => {
+    setInviteFontStyle(fontId);
+    try {
+      const localSavedStr = localStorage.getItem("vivaha_saved_invitations") || "{}";
+      const localSaved = JSON.parse(localSavedStr);
+      const cleanSlug = slugInput.toLowerCase();
+      localSaved[cleanSlug] = {
+        ...localSaved[cleanSlug],
+        fontStyle: fontId
       };
       localStorage.setItem("vivaha_saved_invitations", JSON.stringify(localSaved));
       setPreviewKey((prev) => prev + 1);
@@ -304,6 +324,7 @@ export default function AdminPage() {
           const inv = await res.json();
           if (inv && inv.slug) {
             setCoupleNames(inv.coupleNames || "");
+            setSplitCoupleNames(Boolean(inv.splitCoupleNames));
             setBrideDetails(inv.brideDetails || "");
             setGroomDetails(inv.groomDetails || "");
             if (inv.weddingDate) {
@@ -313,6 +334,8 @@ export default function AdminPage() {
             setVenueName(inv.venueName || "");
             setVenueAddress(inv.venueAddress || "");
             setMapUrl(inv.mapUrl || "");
+            setEnableAccommodations(inv.enableAccommodations !== false);
+            setAccommodationsTitle(inv.accommodationsTitle || "Accommodations & Venue Directions");
             setStory(inv.story || "");
             // Hydrate structured story editor
             const parsedStory = parseStory(inv.story || "");
@@ -323,6 +346,7 @@ export default function AdminPage() {
               // Legacy plain text — put it in the quote field
               setStoryData({ ...DEFAULT_STORY_DATA, quote: parsedStory || DEFAULT_STORY_DATA.quote });
             }            setInviteTheme(inv.theme || "velvet");
+            setInviteFontStyle(inv.fontStyle || "cormorant_bickham");
             if (inv.heroBgUrl) setHeroBgUrl(inv.heroBgUrl);
             if (inv.heroBgType) setHeroBgType(inv.heroBgType);
             if (inv.musicUrl !== undefined) setMusicUrl(inv.musicUrl || "");
@@ -573,6 +597,7 @@ export default function AdminPage() {
     if (inv) {
       setSlugInput(inv.slug);
       setCoupleNames(inv.coupleNames);
+      setSplitCoupleNames(Boolean(inv.splitCoupleNames));
       setBrideDetails(inv.brideDetails || "Daughter of Bride Family");
       setGroomDetails(inv.groomDetails || "Son of Groom Family");
       setWeddingDate(inv.weddingDate ? inv.weddingDate.substring(0, 16) : "2026-12-14T11:00");
@@ -580,6 +605,8 @@ export default function AdminPage() {
       setVenueName(inv.venueName);
       setVenueAddress(inv.venueAddress || "India");
       setMapUrl(inv.mapUrl || "https://maps.google.com");
+      setEnableAccommodations(inv.enableAccommodations !== false);
+      setAccommodationsTitle(inv.accommodationsTitle || "Accommodations & Venue Directions");
       setStory(inv.story);
       // Hydrate structured story editor from preset
       const parsedPresetStory = parseStory(inv.story);
@@ -842,6 +869,7 @@ export default function AdminPage() {
       slug: slugInput,
       email: userEmail,
       coupleNames,
+      splitCoupleNames,
       brideDetails,
       groomDetails,
       weddingDate,
@@ -851,6 +879,7 @@ export default function AdminPage() {
       mapUrl,
       story: JSON.stringify(storyData),
       theme: inviteTheme,
+      fontStyle: inviteFontStyle,
       heroBgType,
       heroBgUrl,
       musicUrl,
@@ -858,6 +887,8 @@ export default function AdminPage() {
       eventsJson: JSON.stringify(eventsList),
       faqJson: JSON.stringify(faqList),
       galleryJson: JSON.stringify(photosList.map((p) => p.src)),
+      enableAccommodations,
+      accommodationsTitle,
     };
 
     try {
@@ -1290,14 +1321,29 @@ export default function AdminPage() {
                   </p>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#55514C] mb-1">Couple Display Names (#hero &amp; Navbar)</label>
-                  <input
-                    type="text"
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#55514C]">
+                    Couple Display Names (#hero &amp; Navbar)
+                  </label>
+                  <textarea
+                    rows={2}
                     value={coupleNames}
                     onChange={(e) => setCoupleNames(e.target.value)}
-                    className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-3.5 py-2.5 text-xs rounded-xs font-medium"
+                    placeholder="e.g. SAHAL HAFNEEDH PK &amp; SAHALA P (Hit Enter for custom line breaks!)"
+                    className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-3.5 py-2 text-xs rounded-xs font-medium resize-y"
                   />
+                  <div className="flex items-start gap-2 pt-0.5 bg-[#FAF8F5] p-2.5 rounded-xs border border-[#E8E2D9]/60">
+                    <input
+                      type="checkbox"
+                      id="splitCoupleNames"
+                      checked={splitCoupleNames}
+                      onChange={(e) => setSplitCoupleNames(e.target.checked)}
+                      className="mt-0.5 rounded border-[#E8E2D9] text-emerald-700 focus:ring-0 w-3.5 h-3.5 cursor-pointer"
+                    />
+                    <label htmlFor="splitCoupleNames" className="text-[11px] text-[#55514C] leading-snug cursor-pointer font-medium">
+                      <span className="font-bold text-[#3D3A36]">Auto-stack at Ampersand (&amp; on new line)</span> — Automatically formats long names across next lines for responsive mobile &amp; tablet layout without requiring manual Enter breaks.
+                    </label>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1379,6 +1425,44 @@ export default function AdminPage() {
                     onChange={(e) => setMapUrl(e.target.value)}
                     className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-3.5 py-2 text-xs rounded-xs font-mono"
                   />
+                </div>
+
+                <div className="p-4 bg-[#F6F3EE] rounded-sm border border-[#E4DDD3] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[#3D3A36]">
+                        Enable Accommodations Facility Option
+                      </label>
+                      <p className="text-[11px] text-[#7A746E] mt-0.5">
+                        Turn OFF if guests do not require accommodations/hotels (displays only Venue Directions).
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={enableAccommodations}
+                        onChange={(e) => setEnableAccommodations(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-[#D1C9BE] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2F2C28]"></div>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#55514C] mb-1">
+                      Section Heading Title (Editable)
+                    </label>
+                    <input
+                      type="text"
+                      value={accommodationsTitle}
+                      onChange={(e) => setAccommodationsTitle(e.target.value)}
+                      placeholder={enableAccommodations ? "Accommodations & Venue Directions" : "Venue Directions Guide"}
+                      className="w-full bg-white border border-[#DCD5CB] px-3 py-2 text-xs rounded-xs font-medium"
+                    />
+                    <p className="text-[10px] text-[#888178] mt-1">
+                      Customize the heading title right above the venue address (`Accommodations & Venue Directions` or `Venue Directions Guide`).
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-4 bg-[#FAF8F5] p-4 rounded-xs border border-[#E8E2D9]">
@@ -1783,6 +1867,13 @@ export default function AdminPage() {
                 </div>
 
                 <div>
+                  <FontSelector
+                    currentFontId={inviteFontStyle}
+                    onSelectFont={handleSelectFont}
+                  />
+                </div>
+
+                <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-[#55514C] mb-2">
                     Select Landing Page Theme Palette (12 Luxury Options)
                   </label>
@@ -1841,7 +1932,7 @@ export default function AdminPage() {
                   Live Website Preview ({currentThemeObj.name})
                 </span>
                 <Link
-                  href={`/invite/${slugInput}`}
+                  href={`/invite/${slugInput}?fontStyle=${inviteFontStyle}&enableAccommodations=${enableAccommodations}&accommodationsTitle=${encodeURIComponent(accommodationsTitle || "")}&splitCoupleNames=${splitCoupleNames}`}
                   target="_blank"
                   className="text-xs text-emerald-700 font-semibold hover:underline inline-flex items-center gap-1"
                 >
@@ -1851,10 +1942,10 @@ export default function AdminPage() {
               </div>
               <div className="flex-1 bg-gray-100 relative">
                 <iframe
-                  src={`/invite/${slugInput}`}
+                  src={`/invite/${slugInput}?fontStyle=${inviteFontStyle}&enableAccommodations=${enableAccommodations}&accommodationsTitle=${encodeURIComponent(accommodationsTitle || "")}&splitCoupleNames=${splitCoupleNames}`}
                   className="w-full h-full border-none"
                   title="Live Landing Page Preview"
-                  key={`${slugInput}-${inviteTheme}-${previewKey}`}
+                  key={`${slugInput}-${inviteTheme}-${inviteFontStyle}-${enableAccommodations}-${splitCoupleNames}-${previewKey}`}
                 />
               </div>
             </div>

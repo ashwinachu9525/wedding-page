@@ -2,25 +2,31 @@
 
 import React from "react";
 import Link from "next/link";
-import { HelpCircle, MessageCircle, Heart } from "lucide-react";
+import { HelpCircle, MessageCircle, Heart, ChevronDown } from "lucide-react";
+import { formatHeadingText } from "@/lib/fonts";
+import { CoupleNameDisplay } from "@/components/couple-name/couple-name";
 
-interface FAQItem {
+export interface FAQItem {
   q: string;
   a: string;
 }
 
 interface FooterSectionProps {
   coupleNames?: string;
+  splitCoupleNames?: boolean;
   faqs?: FAQItem[];
   withRegards?: string;
   accentClass?: string;
+  headingType?: "script" | "serif" | "modern";
 }
 
 export function FooterSection({
   coupleNames = "Rahul Sharma & Priya Mehta",
+  splitCoupleNames = false,
   faqs,
   withRegards,
   accentClass = "text-[#D4AF37]",
+  headingType,
 }: FooterSectionProps) {
   const hasWithRegards = !!withRegards?.trim();
 
@@ -65,7 +71,14 @@ export function FooterSection({
 
         {/* Editorial Brand Footer */}
         <div className="pt-4 border-t border-current/15 text-center space-y-6">
-          <div className="font-serif text-3xl uppercase tracking-widest font-light">{coupleNames}</div>
+          <div className={`font-serif tracking-widest ${headingType === "script" ? "font-normal text-3xl sm:text-4xl leading-tight" : "text-2xl sm:text-3xl uppercase font-light"}`}>
+            <CoupleNameDisplay
+              names={coupleNames}
+              headingType={headingType}
+              multiLine={true}
+              splitAmpersand={splitCoupleNames}
+            />
+          </div>
 
           <div className="flex flex-wrap items-center justify-center gap-6 text-xs uppercase tracking-widest pt-2">
             <Link href="/" className="hover:underline">VivahaLuxe Platform</Link>

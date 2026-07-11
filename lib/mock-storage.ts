@@ -12,6 +12,7 @@ export interface InvitationData {
   mapUrl?: string;
   story: string;
   theme: string;
+  fontStyle?: string;
   musicUrl?: string;
   heroBgType?: "image" | "video";
   heroBgUrl?: string;
@@ -22,6 +23,9 @@ export interface InvitationData {
   eventsJson: string;
   galleryJson: string;
   isProUser?: boolean;
+  enableAccommodations?: boolean;
+  accommodationsTitle?: string;
+  splitCoupleNames?: boolean;
 }
 
 const DEFAULT_INVITATIONS: InvitationData[] = [
@@ -39,6 +43,7 @@ const DEFAULT_INVITATIONS: InvitationData[] = [
     mapUrl: "https://maps.google.com/?q=The+Tamarind+Tree+Bangalore",
     story: "Two paths crossed under the Bangalore skies, blossoming into a lifelong bond of love, laughter, and heritage.",
     theme: "alabaster",
+    fontStyle: "cormorant_bickham",
     musicUrl: "https://assets.mixkit.co/music/preview/mixkit-romantic-wedding-piano-136.mp3",
     heroBgType: "image",
     heroBgUrl: "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=2070&auto=format&fit=crop",
@@ -200,6 +205,7 @@ export function saveOrUpdateInvitation(data: Partial<InvitationData> & { slug: s
       mapUrl: data.mapUrl || "https://maps.google.com",
       story: data.story || "A beautiful celebration of love and togetherness.",
       theme: data.theme || "alabaster",
+      fontStyle: data.fontStyle || "cormorant_bickham",
       musicUrl: data.musicUrl || "",
       heroBgType: data.heroBgType || "image",
       heroBgUrl: data.heroBgUrl || "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=2070&auto=format&fit=crop",
@@ -209,6 +215,9 @@ export function saveOrUpdateInvitation(data: Partial<InvitationData> & { slug: s
       viewCount: 1,
       eventsJson: data.eventsJson || "[]",
       galleryJson: data.galleryJson || "[]",
+      enableAccommodations: data.enableAccommodations !== undefined ? data.enableAccommodations : true,
+      accommodationsTitle: data.accommodationsTitle || "Accommodations & Venue Directions",
+      splitCoupleNames: Boolean(data.splitCoupleNames),
     };
     memoryInvitations.push(newInv);
     return newInv;

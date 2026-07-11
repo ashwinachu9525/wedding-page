@@ -24,3 +24,89 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Dynamic Invitation Typography Styles with Ultra-Crisp Vector Legibility */
+.invitation-container,
+.invitation-container * {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+.invitation-container {
+  font-family: var(--invitation-body-font, sans-serif);
+}
+
+.invitation-container p,
+.invitation-container li,
+.invitation-container label,
+.invitation-container input,
+.invitation-container textarea,
+.invitation-container span,
+.invitation-container .font-sans {
+  font-family: var(--invitation-body-font, sans-serif);
+}
+
+.invitation-container h1,
+.invitation-container h2,
+.invitation-container h3,
+.invitation-container h4,
+.invitation-container .font-serif,
+.invitation-container [data-heading="true"] {
+  font-family: var(--invitation-heading-font, serif) !important;
+}
+
+/* CRITICAL: When a Calligraphy/Script font is selected, remove all-caps (uppercase) from headings! Also enforce font-weight: 400 to prevent browser faux-bold smudging/distortion on thin script curves. */
+.invitation-container[data-heading-type="script"] h1,
+.invitation-container[data-heading-type="script"] h2,
+.invitation-container[data-heading-type="script"] h3,
+.invitation-container[data-heading-type="script"] h4,
+.invitation-container[data-heading-type="script"] .font-serif {
+  text-transform: none !important;
+  font-weight: 400 !important;
+  font-style: normal !important;
+  letter-spacing: normal !important;
+  line-height: 1.15 !important;
+}
+
+/* Ensure Serif/Modern headings render with clean, crisp weights without spindly breakage */
+.invitation-container[data-heading-type="serif"] h1,
+.invitation-container[data-heading-type="serif"] h2,
+.invitation-container[data-heading-type="serif"] h3,
+.invitation-container[data-heading-type="serif"] h4 {
+  font-weight: 400 !important;
+}
+
+/* Apply optical font size scaling for script calligraphy (e.g. Tangerine/Pinyon need roughly 25-45% boost to match serif impact) */
+.invitation-container[data-heading-type="script"] h1 {
+  font-size: calc(3.5rem * var(--heading-scale, 1.25)) !important;
+}
+@media (min-width: 640px) {
+  .invitation-container[data-heading-type="script"] h1 {
+    font-size: calc(5rem * var(--heading-scale, 1.25)) !important;
+  }
+}
+@media (min-width: 768px) {
+  .invitation-container[data-heading-type="script"] h1 {
+    font-size: calc(6.5rem * var(--heading-scale, 1.25)) !important;
+  }
+}
+
+.invitation-container[data-heading-type="script"] h2 {
+  font-size: calc(2.25rem * var(--heading-scale, 1.2)) !important;
+}
+@media (min-width: 640px) {
+  .invitation-container[data-heading-type="script"] h2 {
+    font-size: calc(3.5rem * var(--heading-scale, 1.2)) !important;
+  }
+}
+
+.invitation-container[data-heading-type="script"] h3 {
+  font-size: calc(1.75rem * var(--heading-scale, 1.15)) !important;
+}
+
+.invitation-container[data-heading-type="script"] h4 {
+  font-size: calc(1.35rem * var(--heading-scale, 1.15)) !important;
+}
+
+

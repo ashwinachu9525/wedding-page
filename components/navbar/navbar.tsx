@@ -4,6 +4,8 @@ import React, { useState, useRef } from "react";
 import Link from "next/link";
 import { Music, VolumeX, Calendar, MapPin, Heart, Image as ImageIcon, Sparkles, Send } from "lucide-react";
 import { toast } from "sonner";
+import { formatHeadingText } from "@/lib/fonts";
+import { CoupleNameDisplay } from "@/components/couple-name/couple-name";
 
 interface NavbarProps {
   coupleNames?: string;
@@ -11,6 +13,8 @@ interface NavbarProps {
   onOpenRSVP: () => void;
   accentClass?: string;
   buttonClass?: string;
+  headingType?: "script" | "serif" | "modern";
+  enableAccommodations?: boolean;
 }
 
 export function Navbar({
@@ -19,6 +23,8 @@ export function Navbar({
   onOpenRSVP,
   accentClass = "text-[#D4AF37]",
   buttonClass = "bg-[#22201E] text-white hover:bg-[#3A3632]",
+  headingType,
+  enableAccommodations = true,
 }: NavbarProps) {
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -40,14 +46,14 @@ export function Navbar({
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-current/[0.04] backdrop-blur-lg border-b border-current/15 py-3.5 px-4 sm:px-8 transition-all">
+    <header className="sticky top-0 z-40 bg-current/5 backdrop-blur-md border-b border-current/10 px-4 sm:px-8 py-4 transition-colors duration-500">
       {musicUrl && <audio ref={audioRef} src={musicUrl} loop />}
 
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
-        {/* Brand / Couple Name */}
-        <Link href="#hero" className="font-serif text-lg sm:text-2xl tracking-tight uppercase font-light flex items-center gap-2">
+      <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+        {/* Couple Names / Logo E.g. Single-line for top header */}
+        <Link href="#hero" className={`font-serif tracking-widest flex items-center gap-2 hover:opacity-80 transition-opacity ${headingType === "script" ? "font-normal text-2xl sm:text-3xl" : "text-lg sm:text-xl uppercase font-light"}`}>
           <Sparkles className={`w-4 h-4 ${accentClass}`} />
-          <span>{coupleNames}</span>
+          <CoupleNameDisplay names={coupleNames} headingType={headingType} multiLine={false} />
         </Link>
 
         {/* Navigation Anchor Links */}
@@ -55,7 +61,9 @@ export function Navbar({
           <a href="#story" className="hover:opacity-100 transition-opacity">Our Story</a>
           <a href="#events" className="hover:opacity-100 transition-opacity">Itinerary</a>
           <a href="#gallery" className="hover:opacity-100 transition-opacity">Gallery</a>
-          <a href="#faq" className="hover:opacity-100 transition-opacity">Accommodations &amp; FAQ</a>
+          <a href="#faq" className="hover:opacity-100 transition-opacity">
+            {enableAccommodations !== false ? "Accommodations & FAQ" : "Directions & FAQ"}
+          </a>
         </nav>
 
         {/* Action Controls */}

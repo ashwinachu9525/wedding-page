@@ -1,2 +1,2 @@
-import { GoogleGenAI } from "@google/generative-ai";
-console.log(GoogleGenAI);
+import { GoogleGenerativeAI } from "@google/generative-ai";
+console.log(GoogleGenerativeAI);

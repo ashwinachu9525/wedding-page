@@ -19,6 +19,8 @@ interface EventSectionProps {
   onOpenRSVP: () => void;
   accentClass?: string;
   buttonClass?: string;
+  enableAccommodations?: boolean;
+  accommodationsTitle?: string;
 }
 
 export function EventSection({
@@ -29,7 +31,10 @@ export function EventSection({
   onOpenRSVP,
   accentClass = "text-[#D4AF37]",
   buttonClass = "bg-[#22201E] text-white hover:bg-[#3A3632]",
+  enableAccommodations = true,
+  accommodationsTitle,
 }: EventSectionProps) {
+  const directionsHeader = accommodationsTitle?.trim() || (enableAccommodations !== false ? "Accommodations & Venue Directions" : "Venue Directions Guide");
 
   const hasEvents = events && events.length > 0;
   const hasVenue = !!(venueName?.trim() || venueAddress?.trim());
@@ -137,7 +142,7 @@ export function EventSection({
         {hasVenue && (
         <div className="p-8 sm:p-12 rounded-sm bg-current/5 border border-current/15 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
           <div className="space-y-2 max-w-xl">
-            <span className={`text-[10px] uppercase tracking-[0.25em] font-bold ${accentClass}`}>Accommodations &amp; Venue Directions</span>
+            <span className={`text-[10px] uppercase tracking-[0.25em] font-bold ${accentClass}`}>{directionsHeader}</span>
             <h3 className="font-serif text-2xl sm:text-3xl font-light">{venueName}</h3>
             {venueAddress && <p className="text-xs opacity-80">{venueAddress}</p>}
           </div>

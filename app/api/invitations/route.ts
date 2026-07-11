@@ -77,6 +77,7 @@ export async function POST(req: Request) {
       mapUrl,
       story,
       theme,
+      fontStyle,
       heroBgType,
       heroBgUrl,
       musicUrl,
@@ -84,6 +85,9 @@ export async function POST(req: Request) {
       faqJson,
       eventsJson,
       galleryJson,
+      enableAccommodations,
+      accommodationsTitle,
+      splitCoupleNames,
     } = body;
 
     if (!slug) {
@@ -118,11 +122,15 @@ export async function POST(req: Request) {
             mapUrl,
             story,
             theme,
+            fontStyle,
             musicUrl,
             eventsJson,
             timelineJson,
             faqJson,
             galleryJson,
+            ...(enableAccommodations !== undefined ? { enableAccommodations: Boolean(enableAccommodations) } : {}),
+            ...(accommodationsTitle !== undefined ? { accommodationsTitle } : {}),
+            ...(splitCoupleNames !== undefined ? { splitCoupleNames: Boolean(splitCoupleNames) } : {}),
           },
           create: {
             slug,
@@ -138,11 +146,15 @@ export async function POST(req: Request) {
             mapUrl: mapUrl || "https://maps.google.com",
             story,
             theme,
+            fontStyle,
             musicUrl,
             eventsJson,
             timelineJson,
             faqJson,
             galleryJson,
+            enableAccommodations: enableAccommodations !== undefined ? Boolean(enableAccommodations) : true,
+            accommodationsTitle: accommodationsTitle || "Accommodations & Venue Directions",
+            splitCoupleNames: Boolean(splitCoupleNames),
           },
         });
         return NextResponse.json(saved);
