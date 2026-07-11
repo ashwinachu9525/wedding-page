@@ -96,9 +96,9 @@ export async function POST(req: NextRequest) {
     // ── Super Admin ──────────────────────────────────────────────────────────
     if (type === "super-admin") {
       const { username, password } = body;
-      const validUser = process.env.SUPER_ADMIN_USERNAME || "superadmin";
-      const validPass = process.env.SUPER_ADMIN_PASSWORD || "admin123";
-      if (username !== validUser || password !== validPass) {
+      const validUser = process.env.SUPER_ADMIN_USERNAME;
+      const validPass = process.env.SUPER_ADMIN_PASSWORD;
+      if (!validUser || !validPass || username !== validUser || password !== validPass) {
         return NextResponse.json({ error: "Invalid super admin credentials" }, { status: 401 });
       }
       const payload: SessionPayload = { email: "superadmin@vivahaluxe.internal", name: "Super Admin", role: "SUPER_ADMIN", isSuperAdmin: true };
@@ -240,16 +240,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Account not found. Please register first." }, { status: 404 });
       }
 
-      // Compare password (plain text or bcrypt)
+      // Compare password (bcrypt only)
       let passwordValid = false;
-      if (user.password === password) {
-        passwordValid = true;
-      } else {
-        try {
-          passwordValid = await bcrypt.compare(password, user.password || "");
-        } catch {
-          // bcrypt compare failed
-        }
+      try {
+        passwordValid = await bcrypt.compare(password, user.password || "");
+      } catch {
+        // bcrypt compare failed
       }
 
       if (!passwordValid) {

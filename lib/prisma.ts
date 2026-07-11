@@ -13,20 +13,26 @@ export function getPrismaClient(): PrismaClient | null {
         const { Pool } = require("pg");
 
         const urlObj = new URL(dbUrl);
+
+        // Extract schema before stripping all query params
         const schemaName = urlObj.searchParams.get("schema") || "public";
-        urlObj.searchParams.delete("sslmode");
-        const cleanUrl = urlObj.toString();
+
+        // Build a clean connection string with ONLY the SSL param pg understands
+        // Remove all custom params (schema, sslmode, etc.) that confuse pg.Pool
+        const cleanUrlObj = new URL(dbUrl);
+        cleanUrlObj.search = ""; // strip all query params
+        const cleanUrl = cleanUrlObj.toString();
 
         const pool = new Pool({
           connectionString: cleanUrl,
-          ssl: {
-            rejectUnauthorized: false,
-          },
-          options: `-c search_path=${schemaName}`,
+          ssl: { rejectUnauthorized: false },
+          // Set schema via session options
+          options: `-c search_path=${schemaName},public`,
         });
+
         const adapter = new PrismaPg(pool, { schema: schemaName });
         globalForPrisma.prisma = new PrismaClient({ adapter });
-        console.log("[Prisma Client] Initialized with PostgreSQL driver adapter.");
+        console.log(`[Prisma] Initialized PostgreSQL adapter (schema: ${schemaName})`);
       } else if (dbUrl.startsWith("libsql://")) {
         const { PrismaLibSQL } = require("@prisma/adapter-libsql");
         const { createClient } = require("@libsql/client");
@@ -37,7 +43,7 @@ export function getPrismaClient(): PrismaClient | null {
         });
         const adapter = new PrismaLibSQL(client);
         globalForPrisma.prisma = new PrismaClient({ adapter });
-        console.log("[Prisma Client] Initialized with LibSQL/Turso driver adapter.");
+        console.log("[Prisma] Initialized LibSQL/Turso adapter.");
       } else if (dbUrl.startsWith("file:") || dbUrl.endsWith(".db")) {
         const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3");
         const Database = require("better-sqlite3");
@@ -46,16 +52,17 @@ export function getPrismaClient(): PrismaClient | null {
         const db = new Database(filename);
         const adapter = new PrismaBetterSqlite3(db);
         globalForPrisma.prisma = new PrismaClient({ adapter });
-        console.log(`[Prisma Client] Initialized with SQLite driver adapter (${filename}).`);
+        console.log(`[Prisma] Initialized SQLite adapter (${filename}).`);
       } else {
-        // Fallback to standard PrismaClient without adapter
         globalForPrisma.prisma = new PrismaClient();
-        console.log("[Prisma Client] Initialized default client.");
+        console.log("[Prisma] Initialized default client.");
       }
     }
     return globalForPrisma.prisma;
   } catch (e) {
-    console.error("PrismaClient initialization failed:", e);
+    console.error("[Prisma] Client initialization failed:", e);
+    // Reset so next request retries initialization
+    globalForPrisma.prisma = undefined;
     return null;
   }
 }
