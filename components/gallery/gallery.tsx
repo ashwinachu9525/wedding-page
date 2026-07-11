@@ -83,16 +83,20 @@ export function GallerySection({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredImages.map((item, idx) => (
           <div
-            key={idx}
-            onClick={() => setSelectedImg(item.src)}
+            key={item.src || idx}
+            onClick={() => item.src && setSelectedImg(item.src)}
             className="group relative aspect-4/3 rounded-sm overflow-hidden border border-current/15 cursor-pointer shadow-xs hover:shadow-xl transition-all bg-black/5"
           >
-            <Image
-              src={item.src}
-              alt={item.caption || `Celebration Moment ${idx + 1}`}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-700"
-            />
+            {item.src ? (
+              <Image
+                src={item.src}
+                alt={item.caption || `Celebration Moment ${idx + 1}`}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-700"
+              />
+            ) : (
+              <div className="w-full h-full bg-black/10 flex items-center justify-center text-xs opacity-40">No image</div>
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6 text-white">
               <div className="flex items-center justify-between">
                 <div>

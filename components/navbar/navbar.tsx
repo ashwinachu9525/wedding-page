@@ -14,7 +14,7 @@ interface NavbarProps {
 }
 
 export function Navbar({
-  coupleNames = "Aswin & Annapoorna",
+  coupleNames = "Rahul Sharma & Priya Mehta",
   musicUrl = "",
   onOpenRSVP,
   accentClass = "text-[#D4AF37]",
@@ -32,7 +32,10 @@ export function Navbar({
       audioRef.current
         .play()
         .then(() => setIsPlayingMusic(true))
-        .catch(() => toast.error("Please click anywhere on page to enable music playback."));
+        .catch((err) => {
+          console.warn("Audio playback failed:", err);
+          toast.error("Playback failed! Please click anywhere on the page first to interact, or check if the audio URL is valid and accessible.");
+        });
     }
   };
 

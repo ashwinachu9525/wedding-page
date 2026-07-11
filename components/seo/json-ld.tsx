@@ -9,11 +9,11 @@ interface WeddingJsonLdProps {
 }
 
 export function WeddingJsonLd({
-  coupleNames = "Aswin K & Annapoorna",
+  coupleNames = "Rahul Sharma & Priya Mehta",
   weddingDate = "2026-11-21T10:30:00",
   venueName = "The Tamarind Tree & The Leela Palace",
   venueAddress = "Bangalore, Karnataka, India",
-  story = "The Royal Wedding Celebration of Aswin & Annapoorna",
+  story = "The Royal Wedding Celebration of Rahul & Priya",
 }: WeddingJsonLdProps) {
   const schemaData = {
     "@context": "https://schema.org",

@@ -21,11 +21,7 @@ export function Story({
   story = "Two paths crossed under the Bangalore skies, blossoming into a lifelong bond of love, laughter, and heritage.",
   brideDetails = "Daughter of Sri K. Ramachandran & Smt. Lakshmi Devi",
   groomDetails = "Son of Sri V. Krishnan & Smt. Saraswathi",
-  timeline = [
-    { date: "June 2023", title: "First Glance at Lalbagh", desc: "A chance meeting under the ancient botanical trees sparked endless coffee conversations." },
-    { date: "December 2024", title: "The Nandi Hills Proposal", desc: "With the sunrise painting the clouds gold, the magical question was asked and answered with joyful tears." },
-    { date: "August 2025", title: "Traditional Ring Ceremony", desc: "Blessed by our elders and families in a sacred South Indian engagement gala." },
-  ],
+  timeline,
   accentClass = "text-[#D4AF37]",
 }: StoryProps) {
   return (
@@ -57,7 +53,7 @@ export function Story({
       </div>
 
       {/* Relationship Milestones Timeline */}
-      {timeline.length > 0 && (
+      {timeline && timeline.length > 0 && (
         <div className="space-y-10 pt-8 border-t border-current/15">
           <div className="text-center">
             <h3 className="font-serif text-2xl sm:text-3xl uppercase tracking-wider">Milestones of Togetherness</h3>

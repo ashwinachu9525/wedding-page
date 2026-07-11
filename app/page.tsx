@@ -35,8 +35,8 @@ const DEMO_PRESETS = [
     vibe: "Dark Royal Gold • Sufi Sangeet & Palace Courtyard Nuptials",
   },
   {
-    slug: "aswin-annapoorna",
-    couple: "Aswin K & Annapoorna",
+    slug: "rahul-priya-2026",
+    couple: "Rahul Sharma & Priya Mehta",
     themeName: "Alabaster Cream",
     themeKey: "alabaster",
     themeBadgeClass: "bg-[#FAF8F5] text-[#22201E] border-[#C4B7A6]",

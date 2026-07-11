@@ -1,76 +1,71 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { CheckCircle2, Sparkles, ArrowRight, ShieldCheck, Mail, RefreshCw, Lock } from "lucide-react";
+import { CheckCircle2, Sparkles, ShieldCheck, RefreshCw, Lock } from "lucide-react";
 
 function VerifyContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const email = searchParams.get("email") || "";
-  const [userEmail, setUserEmail] = useState(email);
+  const otpFromUrl = searchParams.get("otp") || "";
+
   const [otpInput, setOtpInput] = useState("");
-  const [expectedOtp, setExpectedOtp] = useState("");
+  const [expectedOtp, setExpectedOtp] = useState(otpFromUrl);
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
   const [resending, setResending] = useState(false);
 
-  useEffect(() => {
-    // Read user details and OTP from session
-    const storedOtp = sessionStorage.getItem("vivaha_otp");
-    if (storedOtp) setExpectedOtp(storedOtp);
-
-    const userStr = sessionStorage.getItem("vivaha_user");
-    if (userStr) {
-      try {
-        const u = JSON.parse(userStr);
-        if (u.email && !userEmail) setUserEmail(u.email);
-      } catch (e) {}
-    }
-  }, [userEmail]);
-
-  const handleVerifyOtp = (e: React.FormEvent) => {
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!otpInput.trim() || otpInput.trim().length < 6) {
+    const trimmed = otpInput.trim();
+    if (!trimmed || trimmed.length < 6) {
       toast.error("Please enter the full 6-digit verification code sent to your email.");
+      return;
+    }
+    if (!email) {
+      toast.error("No email address found. Please restart registration.");
+      router.replace("/auth/register");
       return;
     }
 
     setVerifying(true);
-    setTimeout(() => {
+
+    // Validate against expected OTP (only populated in dev when SMTP is off)
+    if (expectedOtp && trimmed !== expectedOtp) {
       setVerifying(false);
-      // Validate OTP (either matches expected OTP or simulator fallback 123456)
-      if (otpInput.trim() === expectedOtp || otpInput.trim() === "123456" || expectedOtp === "") {
-        setVerified(true);
-        sessionStorage.setItem("vivaha_email_verified", "true");
-        sessionStorage.setItem("admin_authenticated", "true");
+      toast.error(`Invalid OTP code. Please check your email inbox for ${email}.`);
+      return;
+    }
 
-        if (userEmail) {
-          const existingUsersStr = localStorage.getItem("vivaha_registered_users") || "{}";
-          let existingUsers: Record<string, any> = {};
-          try {
-            existingUsers = JSON.parse(existingUsersStr);
-          } catch (err) {}
-          const cleanEmail = userEmail.trim().toLowerCase();
-          if (existingUsers[cleanEmail]) {
-            existingUsers[cleanEmail].verified = true;
-            localStorage.setItem("vivaha_registered_users", JSON.stringify(existingUsers));
-          }
-        }
+    // Mark the user's email as verified on the server and create session
+    try {
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp: trimmed }),
+      });
+      const data = await res.json();
 
-        toast.success("Email verified successfully! Opening celebration setup wizard...");
-        setTimeout(() => {
-          router.push("/admin/onboarding");
-        }, 1500);
-      } else {
-        toast.error(`Invalid OTP code. Please check your email inbox for ${userEmail}.`);
+      if (!res.ok) {
+        setVerifying(false);
+        toast.error(data.error || "OTP verification failed. Please try again.");
+        return;
       }
-    }, 800);
+
+      setVerifying(false);
+      setVerified(true);
+      toast.success("Email verified! Opening celebration setup wizard...");
+      setTimeout(() => router.push("/admin/onboarding"), 1200);
+    } catch (err) {
+      setVerifying(false);
+      toast.error("Network error during verification. Please try again.");
+    }
   };
 
   const handleResendOtp = async () => {
-    if (!userEmail) {
+    if (!email) {
       toast.error("No email found to resend verification code.");
       return;
     }
@@ -79,19 +74,18 @@ function VerifyContent() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail, name: "Celebration Host" }),
+        body: JSON.stringify({ email, name: "Celebration Host" }),
       });
       const data = await res.json();
-      if (res.ok && data.otpCode) {
-        sessionStorage.setItem("vivaha_otp", data.otpCode);
-        setExpectedOtp(data.otpCode);
-        if (!data.emailSent) {
-          toast.success(`[Simulator] New OTP generated: ${data.otpCode}`);
+      if (res.ok && data.success) {
+        if (data.otpCode) {
+          setExpectedOtp(data.otpCode);
+          toast.success(`[Dev] New OTP: ${data.otpCode}`);
         } else {
-          toast.success(`New 6-digit verification code sent via SMTP to ${userEmail}!`);
+          toast.success(`New 6-digit code sent to ${email}!`);
         }
       } else {
-        toast.error("Could not resend OTP code.");
+        toast.error(data.error || "Could not resend OTP code.");
       }
     } catch (err) {
       toast.error("Network error while requesting new OTP.");
@@ -109,11 +103,12 @@ function VerifyContent() {
           </div>
           <div className="flex items-center justify-center gap-1.5 text-[10px] uppercase tracking-[0.3em] text-[#D4AF37] font-bold">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Step 2: SMTP Verification</span>
+            <span>Step 2: Email Verification</span>
           </div>
           <h1 className="font-serif text-3xl font-light text-white">Enter Email OTP</h1>
           <p className="text-xs text-[#C4B7A6] leading-relaxed">
-            We sent a 6-digit verification code to <span className="text-white font-semibold">{userEmail || "your email"}</span>. Enter it below before onboarding.
+            We sent a 6-digit verification code to{" "}
+            <span className="text-white font-semibold">{email || "your email"}</span>. Enter it below to continue.
           </p>
         </div>
 
@@ -125,12 +120,13 @@ function VerifyContent() {
               </label>
               <input
                 type="text"
+                inputMode="numeric"
                 maxLength={6}
                 required
                 value={otpInput}
                 onChange={(e) => setOtpInput(e.target.value.replace(/[^0-9]/g, ""))}
                 placeholder="• • • • • •"
-                className="w-full bg-black/60 border-2 border-[#D4AF37]/50 px-4 py-4 text-2xl text-center tracking-[0.5em] font-mono font-bold rounded-xs text-white placeholder-white/20 focus:outline-hidden focus:border-[#D4AF37] shadow-inner transition-all"
+                className="w-full bg-black/60 border-2 border-[#D4AF37]/50 px-4 py-4 text-2xl text-center tracking-[0.5em] font-mono font-bold rounded-xs text-white placeholder-white/20 focus:outline-none focus:border-[#D4AF37] transition-all"
               />
             </div>
 
@@ -163,9 +159,7 @@ function VerifyContent() {
             </div>
             <div>
               <h2 className="font-serif text-2xl text-white">Verification Complete!</h2>
-              <p className="text-xs text-emerald-300 mt-1">
-                Redirecting to your celebration setup wizard...
-              </p>
+              <p className="text-xs text-emerald-300 mt-1">Redirecting to your celebration setup wizard...</p>
             </div>
           </div>
         )}

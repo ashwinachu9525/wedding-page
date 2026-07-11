@@ -10,7 +10,8 @@ const razorpay = new Razorpay({
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { coupleNames, userEmail, amount = 499 } = body;
+    const { coupleNames, userEmail } = body;
+    const FIXED_AMOUNT_INR = 499; // server-enforced price — never trust client
 
     if (!coupleNames || !userEmail) {
       return NextResponse.json({ error: "Missing required fields: coupleNames, userEmail" }, { status: 400 });
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
 
     // Create Razorpay Order
     const order = await razorpay.orders.create({
-      amount: amount * 100, // paise
+      amount: FIXED_AMOUNT_INR * 100, // paise
       currency: "INR",
       receipt: `vl_pro_${Date.now()}`,
       notes: {

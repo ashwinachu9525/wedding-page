@@ -9,13 +9,15 @@ interface RSVPModalProps {
   onOpenChange: (open: boolean) => void;
   coupleNames?: string;
   buttonClass?: string;
+  slug?: string;
 }
 
 export function RSVPModal({
   open,
   onOpenChange,
-  coupleNames = "Aswin & Annapoorna",
+  coupleNames = "Rahul Sharma & Priya Mehta",
   buttonClass = "bg-[#22201E] text-white hover:bg-[#3A3632]",
+  slug = "rahul-priya-2026",
 }: RSVPModalProps) {
   const [name, setName] = useState("");
   const [attending, setAttending] = useState("yes");
@@ -26,9 +28,26 @@ export function RSVPModal({
 
   if (!open) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name) return;
+    try {
+      await fetch("/api/rsvps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          name,
+          attending,
+          guestsCount,
+          dietary,
+          allergies,
+          songRequest,
+        }),
+      });
+    } catch (err) {
+      console.warn("Failed to post RSVP, fallback to local.");
+    }
     toast.success(`Thank you ${name}! Your RSVP, song request & dietary preferences for ${coupleNames} are logged.`);
     setName("");
     setAllergies("");

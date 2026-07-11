@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSession } from "@/hooks/useSession";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -46,6 +47,7 @@ import {
 } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
 import { useRazorpay } from "@/hooks/useRazorpay";
+import { DeleteAccountDialog } from "@/components/ui/delete-account-dialog";
 
 type ThemeKey =
   | "alabaster"
@@ -59,7 +61,10 @@ type ThemeKey =
   | "peacock"
   | "lotus"
   | "sandalwood"
-  | "banarasi";
+  | "banarasi"
+  | "hindu_royal"
+  | "arabic_royal"
+  | "christian_royal";
 
 const INVITE_THEMES: { key: ThemeKey; name: string; bgClass: string; textClass: string; borderClass: string }[] = [
   { key: "alabaster", name: "Alabaster Cream", bgClass: "bg-[#FAF8F5]", textClass: "text-[#22201E]", borderClass: "border-[#C4B7A6]" },
@@ -73,6 +78,10 @@ const INVITE_THEMES: { key: ThemeKey; name: string; bgClass: string; textClass: 
   { key: "peacock", name: "Royal Peacock Teal", bgClass: "bg-[#0A2229]", textClass: "text-[#E8F8FA]", borderClass: "border-[#38A3A5]" },
   { key: "lotus", name: "Sacred Pink Lotus", bgClass: "bg-[#FFF0F5]", textClass: "text-[#5C1D34]", borderClass: "border-[#D8829D]" },
   { key: "sandalwood", name: "Mysore Sandalwood", bgClass: "bg-[#2A2019]", textClass: "text-[#F3E6DA]", borderClass: "border-[#C19A6B]" },
+  { key: "banarasi", name: "Banarasi Royal Brocade", bgClass: "bg-[#130822]", textClass: "text-[#F8F2FF]", borderClass: "border-[#D4AF37]" },
+  { key: "hindu_royal", name: "🕉️ Hindu Royal Saffron", bgClass: "bg-[#2D0A0E]", textClass: "text-[#FAF8F5]", borderClass: "border-[#FF9933]" },
+  { key: "arabic_royal", name: "🌙 Arabic Royal Sapphire", bgClass: "bg-[#061B1C]", textClass: "text-[#FAF8F5]", borderClass: "border-[#E6C280]" },
+  { key: "christian_royal", name: "🕊️ Christian Royal White", bgClass: "bg-[#FAF9F6]", textClass: "text-[#2B3E50]", borderClass: "border-[#B0C4DE]" },
 ];
 
 const BUILTIN_MUSIC_TRACKS = [
@@ -157,7 +166,9 @@ export default function AdminPage() {
   const [userPlan, setUserPlan] = useState<"FREE" | "PRO">("FREE");
   const [upgradingPro, setUpgradingPro] = useState(false);
   const [proTransactions, setProTransactions] = useState<any[]>([]);
-  const [userEmail, setUserEmail] = useState("couple@vivahaluxe.com");
+  const [userEmail, setUserEmail] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Bulk Print Studio State
   const [selectedDesign, setSelectedDesign] = useState(PRINT_CARD_DESIGNS[0]);
@@ -195,11 +206,43 @@ export default function AdminPage() {
   const [mapUrl, setMapUrl] = useState("https://maps.google.com/?q=Rambagh+Palace+Jaipur");
   const [story, setStory] = useState("From college best friends to soulful life partners, our journey is filled with laughter, adventures, and unconditional devotion.");
   const [inviteTheme, setInviteTheme] = useState<ThemeKey>("velvet");
+  const [previewKey, setPreviewKey] = useState(0);
+
+  const handleSelectTheme = (themeKey: ThemeKey) => {
+    setInviteTheme(themeKey);
+    try {
+      const localSavedStr = localStorage.getItem("vivaha_saved_invitations") || "{}";
+      const localSaved = JSON.parse(localSavedStr);
+      const cleanSlug = slugInput.toLowerCase();
+      localSaved[cleanSlug] = {
+        ...localSaved[cleanSlug],
+        theme: themeKey
+      };
+      localStorage.setItem("vivaha_saved_invitations", JSON.stringify(localSaved));
+      setPreviewKey((prev) => prev + 1);
+    } catch (e) {}
+  };
+
+  const [timelineList, setTimelineList] = useState<any[]>([
+    { date: "June 2023", title: "First Glance at Lalbagh", desc: "A chance meeting under the ancient botanical trees sparked endless coffee conversations." },
+    { date: "December 2024", title: "The Nandi Hills Proposal", desc: "With the sunrise painting the clouds gold, the magical question was asked and answered with joyful tears." },
+    { date: "August 2025", title: "Traditional Ring Ceremony", desc: "Blessed by our elders and families in a sacred South Indian engagement gala." },
+  ]);
+  const [eventsList, setEventsList] = useState<any[]>([
+    { name: "Haldi & Mehendi", time: "Nov 20, 4:00 PM", venue: "Tamarind Tree Gardens", desc: "Start the celebration with music and henna." },
+    { name: "Muhurtham Ceremony", time: "Nov 21, 9:30 AM", venue: "Tamarind Tree Main Hall", desc: "The sacred union under the auspicious hour." },
+    { name: "Grand Reception Gala", time: "Nov 22, 7:00 PM", venue: "The Leela Palace Ballroom", desc: "An evening of laughter, dinner, and dancing." },
+  ]);
+  const [faqList, setFaqList] = useState<any[]>([
+    { q: "What is the dress code?", a: "Traditional Indian ethnic or formal western attire. We encourage bright celebration colors!" },
+    { q: "Is valet parking available?", a: "Yes, complimentary valet parking is provided at both The Tamarind Tree and The Leela Palace." },
+    { q: "What accommodations are recommended?", a: "We have partnered with partner luxury boutique hotels near Bangalore South. Contact family for block discounts." },
+  ]);
 
   // Hero Configuration State
   const [heroBgType, setHeroBgType] = useState<"image" | "video">("image");
   const [heroBgUrl, setHeroBgUrl] = useState("https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=1974&auto=format&fit=crop");
-  const [musicUrl, setMusicUrl] = useState("https://assets.mixkit.co/music/preview/mixkit-romantic-wedding-piano-136.mp3");
+  const [musicUrl, setMusicUrl] = useState("");
 
   const [photosList, setPhotosList] = useState<any[]>([
     { id: "1", src: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=1974&auto=format&fit=crop", caption: "Mandap Moments", category: "ceremony" },
@@ -209,53 +252,165 @@ export default function AdminPage() {
   const [photoCaptionInput, setPhotoCaptionInput] = useState("");
   const [photoCategoryInput, setPhotoCategoryInput] = useState("ceremony");
 
-  const [rsvps, setRsvps] = useState<any[]>([
-    { id: 1, name: "Vikram & Pooja Sharma", attending: "yes", guests: "2", dietary: "Vegetarian", allergies: "None", songRequest: "Tum Se Hi", events: ["Mehendi", "Ceremony"] },
-    { id: 2, name: "Rajesh K Nair", attending: "yes", guests: "1", dietary: "No restrictions", allergies: "Shellfish", songRequest: "Kesariya", events: ["Reception"] },
-  ]);
+  const [rsvps, setRsvps] = useState<any[]>([]);
 
+  const { user: sessionUser, loading: sessionLoading, logout: sessionLogout } = useSession();
+
+  // ── Effect 1: Auth guard — runs when session resolves ──────────────────────
   useEffect(() => {
-    const auth = sessionStorage.getItem("admin_authenticated");
-    if (auth === "true") setIsAuthenticated(true);
+    if (sessionLoading) return;
+    if (!sessionUser) {
+      router.replace("/auth/login");
+      return;
+    }
+    setIsAuthenticated(true);
+    if (!sessionUser.onboarded) {
+      router.replace("/admin/onboarding");
+      return;
+    }
 
-    if (typeof window !== "undefined" && window.location.origin && !window.location.origin.includes("localhost")) {
+    if (typeof window !== "undefined" && window.location.origin) {
       setCustomDomain(window.location.origin);
     }
 
-    const userStr = sessionStorage.getItem("vivaha_user");
-    if (userStr) {
+    const fetchRsvps = async (slug: string) => {
       try {
-        const u = JSON.parse(userStr);
-        if (u.isDemo || u.email === "demo@vivahaluxe.com") {
-          setIsDemoUser(true);
+        const res = await fetch(`/api/rsvps?slug=${encodeURIComponent(slug)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            const mapped = data.map((r: any) => ({
+              id: r.id,
+              name: r.guestName,
+              attending: r.attending,
+              guests: r.guestsCount.toString(),
+              dietary: r.dietary || "None",
+              allergies: r.phone || "None",
+              songRequest: "N/A",
+              events: r.events ? r.events.split(", ") : [],
+            }));
+            setRsvps(mapped);
+          }
         }
-        if (u.email) setUserEmail(u.email);
-        if (u.coupleNames) setCoupleNames(u.coupleNames);
-        if (u.slug) setSlugInput(u.slug);
-        if (u.venueName) {
-          setVenueName(u.venueName);
-          setVenueAddress(u.venueName);
-        }
-        if (u.weddingDate) {
-          setWeddingDate(`${u.weddingDate}T11:00`);
-          setWeddingDateDisplay(u.weddingDate);
-        }
-        if (u.plan === "PRO" || u.isPro) {
-          setUserPlan("PRO");
-        } else {
-          try {
-            const regStr = localStorage.getItem("vivaha_registered_users") || "[]";
-            const regList = JSON.parse(regStr);
-            const found = regList.find((x: any) => x.email === u.email);
-            if (found && (found.plan === "PRO" || found.isPro)) {
-              setUserPlan("PRO");
-              u.plan = "PRO";
-              u.isPro = true;
-              sessionStorage.setItem("vivaha_user", JSON.stringify(u));
+      } catch (e) {
+        console.warn("Failed to load real RSVPs.");
+      }
+    };
+
+    const fetchInvitationDetails = async (slug: string) => {
+      try {
+        const res = await fetch(`/api/invitations?slug=${encodeURIComponent(slug)}`);
+        if (res.ok) {
+          const inv = await res.json();
+          if (inv && inv.slug) {
+            setCoupleNames(inv.coupleNames || "");
+            setBrideDetails(inv.brideDetails || "");
+            setGroomDetails(inv.groomDetails || "");
+            if (inv.weddingDate) {
+              setWeddingDate(inv.weddingDate.substring(0, 16));
             }
-          } catch (err) {}
+            setWeddingDateDisplay(inv.weddingDateDisplay || "");
+            setVenueName(inv.venueName || "");
+            setVenueAddress(inv.venueAddress || "");
+            setMapUrl(inv.mapUrl || "");
+            setStory(inv.story || "");
+            setInviteTheme(inv.theme || "velvet");
+            if (inv.heroBgUrl) setHeroBgUrl(inv.heroBgUrl);
+            if (inv.heroBgType) setHeroBgType(inv.heroBgType);
+            if (inv.musicUrl !== undefined) setMusicUrl(inv.musicUrl || "");
+
+            if (inv.timelineJson) {
+              try { setTimelineList(JSON.parse(inv.timelineJson)); } catch (e) {}
+            }
+            if (inv.eventsJson) {
+              try { setEventsList(JSON.parse(inv.eventsJson)); } catch (e) {}
+            }
+            if (inv.faqJson) {
+              try { setFaqList(JSON.parse(inv.faqJson)); } catch (e) {}
+            }
+            if (inv.galleryJson) {
+              try {
+                const urls = JSON.parse(inv.galleryJson);
+                if (Array.isArray(urls)) {
+                  setPhotosList(urls.map((url: string, index: number) => ({
+                    id: `${Date.now()}-${index}`,
+                    src: url,
+                    caption: "Gallery Photo",
+                    category: "ceremony",
+                  })));
+                }
+              } catch (e) {}
+            }
+          }
         }
-      } catch (e) {}
+      } catch (e) {
+        console.warn("Failed to load invitation details from DB.");
+      }
+    };
+
+    const fetchPaymentHistory = async (email: string) => {
+      try {
+        const res = await fetch(`/api/payments?email=${encodeURIComponent(email)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setProTransactions(data);
+            // Set PRO plan if any active payment or admin grant exists
+            const isActivePro = data.some(
+              (tx: any) =>
+                tx.status === "Approved & Active" || tx.status === "Active"
+            );
+            if (isActivePro) setUserPlan("PRO");
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch payment history from DB.");
+      }
+    };
+
+    // Populate state from session user
+    const u = sessionUser;
+    if (u.isDemo || u.email === "demo@vivahaluxe.com") {
+      setIsDemoUser(true);
+      setRsvps([
+        { id: 1, name: "Vikram & Pooja Sharma", attending: "yes", guests: "2", dietary: "Vegetarian", allergies: "None", songRequest: "Tum Se Hi", events: ["Mehendi", "Ceremony"] },
+        { id: 2, name: "Rajesh K Nair", attending: "yes", guests: "1", dietary: "No restrictions", allergies: "Shellfish", songRequest: "Kesariya", events: ["Reception"] },
+      ]);
+      setProTransactions([
+        {
+          txId: "DEMO-TXN-PRO-88421",
+          razorpayOrderId: "DEMO-ORDER-77124",
+          amount: 499,
+          paymentMethod: "UPI (Simulated)",
+          date: "02 Jul 2026",
+          status: "Simulated Demo",
+          isDemo: true,
+        },
+      ]);
+    }
+    if (u.email) {
+      setUserEmail(u.email);
+      if (!u.isDemo && u.email !== "demo@vivahaluxe.com") {
+        fetchPaymentHistory(u.email);
+      }
+    }
+    if ((u as any).coupleNames) setCoupleNames((u as any).coupleNames);
+    if ((u as any).venueName) {
+      setVenueName((u as any).venueName);
+      setVenueAddress((u as any).venueName);
+    }
+    // Do NOT set weddingDate from session — it only stores the date portion,
+    // which would overwrite the saved datetime. fetchInvitationDetails (called
+    // below) loads the full datetime-local value directly from the DB.
+    if (u.slug) {
+      setSlugInput(u.slug);
+      if (!u.isDemo && u.email !== "demo@vivahaluxe.com") {
+        fetchRsvps(u.slug);
+        fetchInvitationDetails(u.slug);
+      }
+    }
+    if ((u as any).plan === "PRO" || (u as any).isPro) {
+      setUserPlan("PRO");
     }
 
     const pendingTheme = sessionStorage.getItem("vivaha_pending_theme");
@@ -267,24 +422,31 @@ export default function AdminPage() {
 
     try {
       const ordStr = localStorage.getItem("vivaha_print_orders") || "[]";
-      const allOrders: any[] = JSON.parse(ordStr);
-      setUserOrders(allOrders);
+      setUserOrders(JSON.parse(ordStr));
     } catch (e) {}
+  }, [sessionUser, sessionLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Effect 2: Load local-storage transactions once userEmail is known ────────
+  useEffect(() => {
+    if (!userEmail) return;
     try {
       const txStr = localStorage.getItem("vivaha_pro_transactions") || "[]";
-      setProTransactions(JSON.parse(txStr));
+      const parsed = JSON.parse(txStr);
+      if (Array.isArray(parsed)) {
+        setProTransactions(parsed.filter((tx: any) => tx.userEmail === userEmail));
+      }
     } catch (e) {}
-  }, []);
+  }, [userEmail]);
 
   // ── Razorpay: called by useRazorpay hook after successful payment + verification ──
   const onRazorpaySuccess = (paymentRecord: any) => {
+    const activeEmail = paymentRecord.userEmail || userEmail;
     const newTx = {
       txId: paymentRecord.razorpayPaymentId || paymentRecord.txId,
       razorpayOrderId: paymentRecord.razorpayOrderId,
       razorpayPaymentId: paymentRecord.razorpayPaymentId,
       coupleNames: paymentRecord.coupleNames || coupleNames,
-      userEmail: paymentRecord.userEmail || userEmail,
+      userEmail: activeEmail,
       amount: paymentRecord.amount || 499,
       paymentMethod: paymentRecord.paymentMethod || "Razorpay",
       date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
@@ -296,20 +458,24 @@ export default function AdminPage() {
       const txList = JSON.parse(txStr);
       const updatedList = [newTx, ...txList];
       localStorage.setItem("vivaha_pro_transactions", JSON.stringify(updatedList));
-      setProTransactions(updatedList);
+      setProTransactions(updatedList.filter((tx: any) => tx.userEmail === activeEmail));
     } catch (err) {}
 
     // Auto-activate Pro since payment is verified by Razorpay
     setUserPlan("PRO");
-    try {
-      const uStr = sessionStorage.getItem("vivaha_user");
-      if (uStr) {
-        const u = JSON.parse(uStr);
-        u.plan = "PRO";
-        u.isPro = true;
-        sessionStorage.setItem("vivaha_user", JSON.stringify(u));
-      }
-    } catch (err) {}
+    // Session cookie is automatically refreshed on next /api/auth/session call
+
+    // Refresh payment list from database
+    if (activeEmail) {
+      fetch(`/api/payments?email=${encodeURIComponent(activeEmail)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setProTransactions(data);
+          }
+        })
+        .catch(() => {});
+    }
 
     toast.success("💎 Pro Account Activated!", {
       description: "Your Razorpay payment was verified. All ads removed instantly. Reference: " + (paymentRecord.razorpayPaymentId || paymentRecord.txId),
@@ -343,14 +509,8 @@ export default function AdminPage() {
     const orderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
     const totalAmount = orderQuantity * selectedDesign.price;
 
-    let userEmail = "couple@vivahaluxe.com";
-    try {
-      const userStr = sessionStorage.getItem("vivaha_user");
-      if (userStr) {
-        const u = JSON.parse(userStr);
-        if (u.email) userEmail = u.email;
-      }
-    } catch (err) {}
+    const orderEmail = sessionUser?.email || "couple@vivahaluxe.com";
+    let userEmail = orderEmail;
 
     const newOrder = {
       id: orderId,
@@ -387,7 +547,7 @@ export default function AdminPage() {
       });
 
       toast.success("✨ Bulk Print Order Placed Successfully!", {
-        description: `Order ID ${orderId}. Alert dispatched to Admin Team (ashwinachu9525@gmail.com).`,
+        description: `Order ID ${orderId}. Alert dispatched to Admin Team (support@vivahaluxe.com).`,
       });
     } catch (err) {
       toast.success("✨ Bulk Print Order Placed!", {
@@ -421,81 +581,204 @@ export default function AdminPage() {
     }
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("admin_authenticated");
-    sessionStorage.removeItem("vivaha_user");
-    sessionStorage.removeItem("vivaha_onboarded");
-    sessionStorage.removeItem("vivaha_email_verified");
+  const handleLogout = async () => {
+    await sessionLogout();
     toast.success("Logged out successfully.");
-    router.push("/auth/login");
+  };
+
+  const uploadFileToStorage = async (file: File, folder: string): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", folder);
+
+    const res = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.error || "Failed to upload file");
+    }
+
+    const data = await res.json();
+    return data.url;
+  };
+
+  const deleteFileFromStorage = async (url: string, folder: string) => {
+    try {
+      await fetch(`/api/upload?url=${encodeURIComponent(url)}&folder=${encodeURIComponent(folder)}`, {
+        method: "DELETE",
+      });
+    } catch (e) {
+      console.warn("Delete request failed:", e);
+    }
   };
 
   // Device File Uploader handler for Hero Media
-  const handleHeroFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleHeroFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > 15 * 1024 * 1024) {
-      toast.error("File is larger than 15MB. Please choose a smaller file or enter direct URL.");
+      toast.error("File is larger than 15MB. Please choose a smaller file.");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (reader.result) {
-        setHeroBgUrl(reader.result as string);
-        if (file.type.startsWith("video/")) {
-          setHeroBgType("video");
-        } else {
-          setHeroBgType("image");
-        }
-        toast.success(`Successfully uploaded ${file.name} from your device!`);
+    toast.loading(`Uploading ${file.name}...`);
+    try {
+      if (heroBgUrl && (heroBgUrl.startsWith("/uploads/") || heroBgUrl.includes("amazonaws.com"))) {
+        await deleteFileFromStorage(heroBgUrl, "hero");
       }
-    };
-    reader.readAsDataURL(file);
+
+      const fileUrl = await uploadFileToStorage(file, "hero");
+      setHeroBgUrl(fileUrl);
+      if (file.type.startsWith("video/")) {
+        setHeroBgType("video");
+      } else {
+        setHeroBgType("image");
+      }
+      toast.dismiss();
+      toast.success(`Successfully uploaded ${file.name}!`);
+    } catch (err: any) {
+      toast.dismiss();
+      toast.error(err.message || "Failed to upload hero asset.");
+    }
   };
 
   // Device File Uploader handler for Background Audio Track
-  const handleAudioFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAudioFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Audio track is larger than 15MB. Please upload a smaller track.");
+      return;
+    }
+
+    toast.loading(`Uploading background music "${file.name}"...`);
+    try {
+      if (musicUrl && (musicUrl.startsWith("/uploads/") || musicUrl.includes("amazonaws.com"))) {
+        await deleteFileFromStorage(musicUrl, "music");
+      }
+
+      const fileUrl = await uploadFileToStorage(file, "music");
+      setMusicUrl(fileUrl);
+      toast.dismiss();
+      toast.success(`Uploaded background music track!`);
+    } catch (err: any) {
+      toast.dismiss();
+      toast.error(err.message || "Failed to upload background audio.");
+    }
+  };
+
+  // Device File Uploader handler for Gallery Photos
+  const handleGalleryFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("Audio track is larger than 10MB. Please upload a smaller MP3 or enter direct URL.");
+      toast.error("Image is larger than 10MB. Please upload a smaller photo.");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (reader.result) {
-        setMusicUrl(reader.result as string);
-        toast.success(`Uploaded background music track "${file.name}"!`);
-      }
-    };
-    reader.readAsDataURL(file);
+    toast.loading(`Uploading photo to gallery...`);
+    try {
+      const fileUrl = await uploadFileToStorage(file, "gallery");
+      setPhotosList([
+        {
+          id: Date.now().toString(),
+          src: fileUrl,
+          caption: file.name.split(".")[0] || "Device Upload",
+          category: photoCategoryInput,
+        },
+        ...photosList,
+      ]);
+      toast.dismiss();
+      toast.success(`Uploaded ${file.name} to Masonry Gallery!`);
+    } catch (err: any) {
+      toast.dismiss();
+      toast.error(err.message || "Failed to upload gallery photo.");
+    }
   };
 
-  // Device File Uploader handler for Gallery Photos
-  const handleGalleryFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDeletePhoto = async (id: string, src: string) => {
+    if (src.startsWith("/uploads/") || src.includes("amazonaws.com")) {
+      await deleteFileFromStorage(src, "gallery");
+    }
+    setPhotosList(photosList.filter((photo) => photo.id !== id));
+    toast.success("Photo removed from gallery!");
+  };
+
+  const handleAiExtractDetails = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (reader.result) {
-        setPhotosList([
-          {
-            id: Date.now().toString(),
-            src: reader.result as string,
-            caption: file.name.split(".")[0] || "Device Upload",
-            category: photoCategoryInput,
-          },
-          ...photosList,
-        ]);
-        toast.success(`Uploaded ${file.name} to Masonry Gallery!`);
+    if (userPlan !== "PRO") {
+      toast.error("This premium feature is restricted to PRO users. Please upgrade your account to enable AI Card Extraction.");
+      return;
+    }
+
+    const checkKey = `vivaha_ai_extracted_${slugInput}`;
+    if (localStorage.getItem(checkKey) === "true") {
+      toast.error("One-time limit reached: You have already used your AI extraction helper for this invitation.");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image file is too large. Please upload an image under 10MB.");
+      return;
+    }
+
+    const toastId = toast.loading("Gemini AI is analyzing your wedding card image...");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("isPro", "true");
+
+      const res = await fetch("/api/extract", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to extract card details");
       }
-    };
-    reader.readAsDataURL(file);
+
+      const result = await res.json();
+      const extracted = result.data;
+
+      if (extracted) {
+        if (extracted.coupleNames) setCoupleNames(extracted.coupleNames);
+        if (extracted.brideDetails) setBrideDetails(extracted.brideDetails);
+        if (extracted.groomDetails) setGroomDetails(extracted.groomDetails);
+        if (extracted.weddingDate) setWeddingDate(extracted.weddingDate.substring(0, 16));
+        if (extracted.weddingDateDisplay) setWeddingDateDisplay(extracted.weddingDateDisplay);
+        if (extracted.venueName) setVenueName(extracted.venueName);
+        if (extracted.venueAddress) setVenueAddress(extracted.venueAddress);
+        if (extracted.mapUrl) setMapUrl(extracted.mapUrl);
+        if (extracted.story) setStory(extracted.story);
+
+        if (Array.isArray(extracted.faqs)) {
+          setFaqList(extracted.faqs);
+        }
+        if (Array.isArray(extracted.events)) {
+          setEventsList(extracted.events);
+        }
+
+        localStorage.setItem(checkKey, "true");
+        toast.dismiss(toastId);
+        if (result.isMock) {
+          toast.success("AI Card Scan Simulated! (Configure GEMINI_API_KEY in .env.local for live Gemini extractions)");
+        } else {
+          toast.success("Gemini AI successfully extracted and auto-populated all wedding details!");
+        }
+      }
+    } catch (err: any) {
+      toast.dismiss(toastId);
+      toast.error(err.message || "Failed to analyze wedding card image.");
+    }
   };
 
 
@@ -504,6 +787,7 @@ export default function AdminPage() {
     e.preventDefault();
     const invData = {
       slug: slugInput,
+      email: userEmail,
       coupleNames,
       brideDetails,
       groomDetails,
@@ -517,36 +801,81 @@ export default function AdminPage() {
       heroBgType,
       heroBgUrl,
       musicUrl,
+      timelineJson: JSON.stringify(timelineList),
+      eventsJson: JSON.stringify(eventsList),
+      faqJson: JSON.stringify(faqList),
       galleryJson: JSON.stringify(photosList.map((p) => p.src)),
     };
 
-    // Save to local storage for guaranteed instant sync across browser tabs
     try {
-      const localSavedStr = localStorage.getItem("vivaha_saved_invitations") || "{}";
-      let localSaved: Record<string, any> = {};
-      try {
-        localSaved = JSON.parse(localSavedStr);
-      } catch (e) {}
-      localSaved[slugInput.toLowerCase()] = {
-        ...localSaved[slugInput.toLowerCase()],
-        ...invData,
-      };
-      localStorage.setItem("vivaha_saved_invitations", JSON.stringify(localSaved));
-    } catch (err) {}
-
-    try {
-      await fetch("/api/invitations", {
+      const res = await fetch("/api/invitations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(invData),
       });
-      toast.success("✨ Celebration Portal Saved Successfully!", {
-        description: `Live preview updated at /invite/${slugInput}`,
+
+      if (!res.ok) {
+        const err = await res.json();
+        toast.error(err.error || "Failed to save. Please try again.");
+        return;
+      }
+
+      setPreviewKey((prev) => prev + 1);
+      toast.success("✨ Celebration Portal Saved!", {
+        description: `Live at /invite/${slugInput}`,
       });
     } catch (err) {
-      toast.success("✨ Saved Locally!", {
-        description: `Live preview updated at /invite/${slugInput}`,
+      toast.error("Network error — could not save to database. Please check your connection.");
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (isDemoUser || userEmail === "demo@vivahaluxe.com") {
+      toast.error("Showcase Account!", {
+        description: "The evaluation showcase demo account cannot be deleted.",
       });
+      return;
+    }
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteAccountConfirmed = async () => {
+    setDeleteLoading(true);
+    try {
+      toast.loading("Deleting your celebration portals and account data...");
+      const res = await fetch("/api/auth/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: userEmail }),
+      });
+      const data = await res.json();
+      toast.dismiss();
+
+      if (!res.ok && data.error) {
+        toast.error(data.error);
+        setDeleteLoading(false);
+        return;
+      }
+
+      // Remove from localStorage mock registry
+      try {
+        const regStr = localStorage.getItem("vivaha_registered_users") || "{}";
+        const regList = JSON.parse(regStr);
+        if (regList[userEmail.toLowerCase()]) {
+          delete regList[userEmail.toLowerCase()];
+          localStorage.setItem("vivaha_registered_users", JSON.stringify(regList));
+        }
+      } catch (e) {}
+
+      await fetch("/api/auth/session", { method: "DELETE" });
+      toast.success("Account and all associated wedding landing pages deleted permanently.");
+      setDeleteDialogOpen(false);
+      router.push("/");
+    } catch (err: any) {
+      toast.dismiss();
+      toast.error(err?.message || "Failed to delete account");
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -625,6 +954,16 @@ export default function AdminPage() {
     toast.success("Photo published to gallery!");
   };
 
+  // Show spinner while session is loading — prevents the "Please Sign In" flash
+  if (sessionLoading || (!isAuthenticated && !sessionUser)) {
+    return (
+      <div className="min-h-screen bg-[#22201E] flex flex-col items-center justify-center gap-4 text-[#FAF8F5]">
+        <div className="w-12 h-12 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin" />
+        <p className="text-xs uppercase tracking-widest text-[#C4B7A6]">Loading your studio...</p>
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#22201E] flex flex-col items-center justify-center p-6 text-[#FAF8F5]">
@@ -640,6 +979,7 @@ export default function AdminPage() {
   const currentThemeObj = INVITE_THEMES.find((t) => t.key === inviteTheme) || INVITE_THEMES[0];
 
   return (
+    <>
     <div className="min-h-screen bg-[#FAF8F5] text-[#22201E] py-8 sm:py-12 px-4 sm:px-8 md:px-12">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Support Alert Bar */}
@@ -730,8 +1070,8 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Display Advertisement banner neatly if user is on Free plan */}
-        <AdBanner slot="admin" className="my-2" />
+        {/* Display Advertisement banner only for Free plan users */}
+        {userPlan === "FREE" && <AdBanner slot="admin" className="my-2" />}
 
         {/* Tabs */}
         <div className="flex border-b border-[#E8E2D9] gap-4 overflow-x-auto">
@@ -813,6 +1153,48 @@ export default function AdminPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-7 bg-white border border-[#E8E2D9] p-6 sm:p-8 rounded-sm shadow-2xs space-y-6">
               <h2 className="font-serif text-2xl">Configure Custom Landing Page details</h2>
+
+              {/* Premium AI Wedding Card Scanner */}
+              <div className="p-4 bg-gradient-to-r from-amber-50/50 to-[#FAF8F5] border border-amber-200/60 rounded-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-5 h-5 text-[#D4AF37] animate-pulse" />
+                    <div>
+                      <h3 className="font-bold text-xs uppercase tracking-wider text-[#22201E] flex items-center gap-1.5">
+                        <span>AI Wedding Card Scanner</span>
+                        <span className="bg-[#D4AF37]/20 text-[#8F741C] text-[9px] px-1.5 py-0.5 rounded font-bold">PRO</span>
+                      </h3>
+                      <p className="text-[10px] text-[#66625D]">Auto-extract all invitation details using Google Gemini AI (One-time helper).</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-1 flex items-center gap-3">
+                  <label className={`px-4 py-2 rounded-xs text-[10px] font-bold uppercase tracking-wider transition-all shadow-2xs ${
+                    userPlan !== "PRO"
+                      ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                      : "bg-[#22201E] hover:bg-[#3A3632] text-white cursor-pointer"
+                  }`}>
+                    <span>Scan Wedding Card Image</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={userPlan !== "PRO"}
+                      onChange={handleAiExtractDetails}
+                      className="hidden"
+                    />
+                  </label>
+                  {userPlan !== "PRO" && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("billing")}
+                      className="text-[10px] text-amber-700 italic underline hover:text-amber-900 transition-colors"
+                    >
+                      Upgrade to PRO to unlock this AI assistant →
+                    </button>
+                  )}
+                </div>
+              </div>
 
               <form onSubmit={handleSaveInvitation} className="space-y-4">
                 <div className="bg-[#FAF8F5] p-3.5 rounded-xs border border-[#E8E2D9]">
@@ -937,8 +1319,229 @@ export default function AdminPage() {
                     rows={2}
                     value={story}
                     onChange={(e) => setStory(e.target.value)}
-                    className="w-full bg-[#FAF8F5] border border-[#E8E2D9] p-3 text-xs rounded-xs"
                   />
+                </div>
+
+                <div className="space-y-3 bg-[#FAF8F5] p-4 rounded-xs border border-[#E8E2D9]">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#55514C]">
+                      Milestones of Togetherness (Love Story Timeline)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setTimelineList([...timelineList, { date: "New Date", title: "New Milestone", desc: "Description here..." }])}
+                      className="text-[10px] bg-[#22201E] text-white px-2 py-1 rounded font-bold uppercase tracking-wider hover:bg-[#3A3632]"
+                    >
+                      + Add Milestone
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                    {timelineList.map((item, idx) => (
+                      <div key={idx} className="p-3 bg-white border border-[#E8E2D9] rounded-xs space-y-2 relative">
+                        <button
+                          type="button"
+                          onClick={() => setTimelineList(timelineList.filter((_, i) => i !== idx))}
+                          className="absolute top-2 right-2 text-xs text-red-600 hover:text-red-800 font-bold"
+                          title="Delete Milestone"
+                        >
+                          ✕
+                        </button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-semibold text-[#888178] uppercase mb-0.5">Date / Month</label>
+                            <input
+                              type="text"
+                              value={item.date}
+                              onChange={(e) => {
+                                const newList = [...timelineList];
+                                newList[idx].date = e.target.value;
+                                setTimelineList(newList);
+                              }}
+                              placeholder="e.g. June 2023"
+                              className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-2 py-1 text-xs rounded-xs font-medium"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-[#888178] uppercase mb-0.5">Milestone Title</label>
+                            <input
+                              type="text"
+                              value={item.title}
+                              onChange={(e) => {
+                                const newList = [...timelineList];
+                                newList[idx].title = e.target.value;
+                                setTimelineList(newList);
+                              }}
+                              placeholder="e.g. First Glance"
+                              className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-2 py-1 text-xs rounded-xs font-medium"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[#888178] uppercase mb-0.5">Brief Description</label>
+                          <textarea
+                            rows={1}
+                            value={item.desc}
+                            onChange={(e) => {
+                              const newList = [...timelineList];
+                              newList[idx].desc = e.target.value;
+                              setTimelineList(newList);
+                            }}
+                            placeholder="Tell the story..."
+                            className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-2 py-1 text-xs rounded-xs"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3 bg-[#FAF8F5] p-4 rounded-xs border border-[#E8E2D9]">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#55514C]">
+                      Celebration Itinerary (Wedding Events Scheduler)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setEventsList([...eventsList, { name: "New Event", time: "Event Time", venue: "Event Venue", desc: "Brief description..." }])}
+                      className="text-[10px] bg-[#22201E] text-white px-2 py-1 rounded font-bold uppercase tracking-wider hover:bg-[#3A3632]"
+                    >
+                      + Add Event
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                    {eventsList.map((evt, idx) => (
+                      <div key={idx} className="p-3 bg-white border border-[#E8E2D9] rounded-xs space-y-2 relative">
+                        <button
+                          type="button"
+                          onClick={() => setEventsList(eventsList.filter((_, i) => i !== idx))}
+                          className="absolute top-2 right-2 text-xs text-red-600 hover:text-red-800 font-bold"
+                          title="Delete Event"
+                        >
+                          ✕
+                        </button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-semibold text-[#888178] uppercase mb-0.5">Event Name</label>
+                            <input
+                              type="text"
+                              value={evt.name}
+                              onChange={(e) => {
+                                const newList = [...eventsList];
+                                newList[idx].name = e.target.value;
+                                setEventsList(newList);
+                              }}
+                              placeholder="e.g. Muhurtham Ceremony"
+                              className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-2 py-1 text-xs rounded-xs font-medium"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-[#888178] uppercase mb-0.5">Event Date / Time</label>
+                            <input
+                              type="text"
+                              value={evt.time}
+                              onChange={(e) => {
+                                const newList = [...eventsList];
+                                newList[idx].time = e.target.value;
+                                setEventsList(newList);
+                              }}
+                              placeholder="e.g. Nov 21, 9:30 AM"
+                              className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-2 py-1 text-xs rounded-xs font-medium"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-semibold text-[#888178] uppercase mb-0.5">Specific Event Venue</label>
+                            <input
+                              type="text"
+                              value={evt.venue}
+                              onChange={(e) => {
+                                const newList = [...eventsList];
+                                newList[idx].venue = e.target.value;
+                                setEventsList(newList);
+                              }}
+                              placeholder="e.g. Main Hall, Tamarind Tree"
+                              className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-2 py-1 text-xs rounded-xs font-medium"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-[#888178] uppercase mb-0.5">Brief Description (Optional)</label>
+                            <textarea
+                              rows={1}
+                              value={evt.desc || ""}
+                              onChange={(e) => {
+                                const newList = [...eventsList];
+                                newList[idx].desc = e.target.value;
+                                setEventsList(newList);
+                              }}
+                              placeholder="e.g. Join us for traditional lunch after rites."
+                              className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-2 py-1 text-xs rounded-xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3 bg-[#FAF8F5] p-4 rounded-xs border border-[#E8E2D9]">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#55514C]">
+                      Frequently Asked Questions (FAQ) &amp; Accommodations
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setFaqList([...faqList, { q: "New Question?", a: "Answer here..." }])}
+                      className="text-[10px] bg-[#22201E] text-white px-2 py-1 rounded font-bold uppercase tracking-wider hover:bg-[#3A3632]"
+                    >
+                      + Add FAQ
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                    {faqList.map((faq, idx) => (
+                      <div key={idx} className="p-3 bg-white border border-[#E8E2D9] rounded-xs space-y-2 relative">
+                        <button
+                          type="button"
+                          onClick={() => setFaqList(faqList.filter((_, i) => i !== idx))}
+                          className="absolute top-2 right-2 text-xs text-red-600 hover:text-red-800 font-bold"
+                          title="Delete FAQ"
+                        >
+                          ✕
+                        </button>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[#888178] uppercase mb-0.5">Question (Q)</label>
+                          <input
+                            type="text"
+                            value={faq.q}
+                            onChange={(e) => {
+                              const newList = [...faqList];
+                              newList[idx].q = e.target.value;
+                              setFaqList(newList);
+                            }}
+                            placeholder="e.g. What is the dress code?"
+                            className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-2 py-1 text-xs rounded-xs font-medium"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[#888178] uppercase mb-0.5">Answer (A)</label>
+                          <textarea
+                            rows={2}
+                            value={faq.a}
+                            onChange={(e) => {
+                              const newList = [...faqList];
+                              newList[idx].a = e.target.value;
+                              setFaqList(newList);
+                            }}
+                            placeholder="Provide answer details..."
+                            className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-2 py-1 text-xs rounded-xs"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
@@ -950,7 +1553,7 @@ export default function AdminPage() {
                       <button
                         key={th.key}
                         type="button"
-                        onClick={() => setInviteTheme(th.key)}
+                        onClick={() => handleSelectTheme(th.key)}
                         className={`p-2.5 rounded-xs border text-center text-xs font-medium transition-all ${
                           inviteTheme === th.key ? `${th.bgClass} ${th.textClass} ${th.borderClass} font-bold ring-2 ring-current` : "bg-white border-[#E8E2D9] text-[#66625D]"
                         }`}
@@ -971,31 +1574,50 @@ export default function AdminPage() {
                   </button>
                 </div>
               </form>
+
+              {/* Danger Zone */}
+              {!isDemoUser && (
+                <div className="mt-8 pt-6 border-t border-red-200 space-y-4">
+                  <div className="flex items-center gap-2 text-red-700">
+                    <Trash2 className="w-5 h-5" />
+                    <h3 className="font-serif text-lg font-bold">Danger Zone</h3>
+                  </div>
+                  <p className="text-xs text-red-600 leading-relaxed">
+                    Completely delete your VivahaLuxe account and remove all of your wedding portals, RSVP lists, timeline milestones, timelines itinerary scheduler, custom configurations, and photos. This action is irreversible and all your data will be permanently wiped from our systems.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    className="bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-xs text-xs font-bold uppercase tracking-wider transition-colors shadow-xs"
+                  >
+                    Delete Account Permanently
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* Live Preview Card */}
-            <div className="lg:col-span-5 flex flex-col items-center justify-center">
-              <div className="w-full mb-2 flex justify-between items-center">
-                <span className="text-xs uppercase tracking-widest font-semibold text-[#888178]">Theme Preview ({currentThemeObj.name})</span>
-                <Link href={`/invite/${slugInput}`} target="_blank" className="text-xs text-emerald-700 font-semibold hover:underline inline-flex items-center gap-1">
-                  <span>Open Multi-Section Page</span>
+            {/* Live Preview Card (Iframe) */}
+            <div className="lg:col-span-5 flex flex-col h-[700px] border border-[#E8E2D9] rounded-sm overflow-hidden shadow-sm bg-white">
+              <div className="w-full bg-[#FAF8F5] border-b border-[#E8E2D9] p-3 flex justify-between items-center">
+                <span className="text-xs uppercase tracking-widest font-semibold text-[#888178]">
+                  Live Website Preview ({currentThemeObj.name})
+                </span>
+                <Link
+                  href={`/invite/${slugInput}`}
+                  target="_blank"
+                  className="text-xs text-emerald-700 font-semibold hover:underline inline-flex items-center gap-1"
+                >
+                  <span>Open in New Tab</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </Link>
               </div>
-
-              <div className={`w-full p-8 rounded-sm border-2 shadow-xl text-center ${currentThemeObj.bgClass} ${currentThemeObj.textClass} ${currentThemeObj.borderClass} space-y-4`}>
-                <div className="text-[10px] uppercase tracking-[0.35em] opacity-70">Modular Landing Page</div>
-                <div className="font-serif text-3xl font-light">{coupleNames}</div>
-                <div className="w-12 h-[1px] bg-current/30 mx-auto" />
-                <p className="font-serif italic text-xs opacity-90">&ldquo;{story}&rdquo;</p>
-                <div className="text-[11px] font-semibold opacity-80">{brideDetails} • {groomDetails}</div>
-                <div className="text-xs uppercase tracking-widest font-semibold pt-2">{weddingDateDisplay}</div>
-                <div className="text-[11px] opacity-75">{venueName}</div>
-                <div className="text-[10px] opacity-60">{venueAddress}</div>
-                <button onClick={handleSendWhatsAppCard} className="mt-4 bg-[#25D366] text-white px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-2">
-                  <Share2 className="w-3.5 h-3.5" />
-                  <span>Send Website Link</span>
-                </button>
+              <div className="flex-1 bg-gray-100 relative">
+                <iframe
+                  src={`/invite/${slugInput}`}
+                  className="w-full h-full border-none"
+                  title="Live Landing Page Preview"
+                  key={`${slugInput}-${inviteTheme}-${previewKey}`}
+                />
               </div>
             </div>
           </div>
@@ -1077,21 +1699,29 @@ export default function AdminPage() {
                   </div>
                   <div className="relative w-full h-48 sm:h-56 bg-black rounded-xs overflow-hidden border border-black/20 shadow-inner flex items-center justify-center">
                     {heroBgType === "video" ? (
-                      <video
-                        key={heroBgUrl}
-                        src={heroBgUrl}
-                        controls
-                        autoPlay
-                        loop
-                        muted
-                        className="w-full h-full object-cover"
-                      />
+                      heroBgUrl ? (
+                        <video
+                          key={heroBgUrl}
+                          src={heroBgUrl}
+                          controls
+                          autoPlay
+                          loop
+                          muted
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-white/40 text-xs">No video URL set</div>
+                      )
                     ) : (
-                      <img
-                        src={heroBgUrl}
-                        alt="Hero Background Preview"
-                        className="w-full h-full object-cover"
-                      />
+                      heroBgUrl ? (
+                        <img
+                          src={heroBgUrl}
+                          alt="Hero Background Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="text-white/40 text-xs">No image URL set</div>
+                      )
                     )}
                   </div>
                   <div>
@@ -1123,8 +1753,8 @@ export default function AdminPage() {
                         Test your celebration background music. When guests open your invitation portal, a gold floating vinyl player will play this track.
                       </p>
                       <audio
-                        key={musicUrl}
-                        src={musicUrl}
+                        key={musicUrl || "no-track"}
+                        src={musicUrl || undefined}
                         controls
                         className="w-full"
                       />
@@ -1238,10 +1868,26 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-[#E8E2D9]">
               {photosList.map((p) => (
                 <div key={p.id} className="relative aspect-4/3 rounded-xs overflow-hidden border border-[#E8E2D9] group">
-                  <Image src={p.src} alt="Moment" fill className="object-cover" />
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 text-white">
-                    <span className="text-[9px] uppercase tracking-widest text-amber-300 font-bold">{p.category}</span>
-                    <p className="font-serif text-xs leading-tight">{p.caption}</p>
+                  {p.src ? (
+                    <Image src={p.src} alt="Moment" fill className="object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-[#E8E2D9] flex items-center justify-center text-xs text-[#888178]">No image</div>
+                  )}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3 text-white">
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePhoto(p.id, p.src)}
+                        className="p-1 bg-red-600/80 hover:bg-red-700 text-white rounded-full text-xs font-bold transition-all shadow-md leading-none w-5 h-5 flex items-center justify-center"
+                        title="Delete Photo"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div>
+                      <span className="text-[9px] uppercase tracking-widest text-amber-300 font-bold">{p.category}</span>
+                      <p className="font-serif text-xs leading-tight">{p.caption}</p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1337,7 +1983,7 @@ export default function AdminPage() {
                     Visual Card Theme Style
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-h-48 overflow-y-auto p-1">
-                    {INVITE_THEMES.slice(0, 8).map((th) => {
+                    {INVITE_THEMES.map((th) => {
                       const isSelected = cardTheme === th.key;
                       return (
                         <button
@@ -1365,7 +2011,7 @@ export default function AdminPage() {
                     Generated Standalone Card Link
                   </span>
                   <Link
-                    href={`/invite/${slugInput}?guest=${encodeURIComponent(guestNameInput)}&note=${encodeURIComponent(inviteNoteInput)}&theme=${cardTheme}`}
+                    href={getInviteCardUrl()}
                     target="_blank"
                     className="text-[10px] text-emerald-700 hover:underline inline-flex items-center gap-1 font-semibold"
                   >
@@ -1518,7 +2164,7 @@ export default function AdminPage() {
                 </div>
                 <h2 className="font-serif text-2xl sm:text-3xl text-[#22201E]">Order Physical Luxury Wedding Cards</h2>
                 <p className="text-xs text-[#55514C] mt-1 leading-relaxed">
-                  Select your physical card design and customize bulk quantities (minimum 100 units). Once requested, instant alerts are dispatched to our production team (<strong className="text-black">ashwinachu9525@gmail.com</strong>) and your registered email.
+                  Select your physical card design and customize bulk quantities (minimum 100 units). Once requested, instant alerts are dispatched to our production team (<strong className="text-black">support@vivahaluxe.com</strong>) and your registered email.
                 </p>
               </div>
 
@@ -2038,7 +2684,7 @@ export default function AdminPage() {
                   <p className="text-xs text-amber-800 mt-1 leading-relaxed">
                     Your upgrade request has been received. The Super Administrator will review your payment and activate your Pro status shortly. Once approved, all advertisements will be removed automatically.
                   </p>
-                  <p className="text-[11px] text-amber-700 mt-2 font-semibold">📧 Contact Super Admin: ashwinachu9525@gmail.com</p>
+                  <p className="text-[11px] text-amber-700 mt-2 font-semibold">📧 Contact Support: support@vivahaluxe.com</p>
                 </div>
               </div>
             )}
@@ -2068,8 +2714,9 @@ export default function AdminPage() {
                     <tbody className="divide-y divide-[#E8E2D9]">
                       {proTransactions.length > 0 ? (
                         proTransactions.map((tx, idx) => (
-                          <tr key={idx}>
+                          <tr key={idx} className={tx.isDemo ? "bg-amber-50/50" : ""}>
                             <td className="py-3.5 px-4 font-mono text-[11px] font-bold text-[#662D91] max-w-[130px] truncate" title={tx.txId || tx.razorpayPaymentId}>
+                              {tx.isDemo && <span className="mr-1.5 bg-amber-200 text-amber-800 text-[8px] px-1 py-0.5 rounded font-bold font-sans">DEMO</span>}
                               {tx.razorpayPaymentId || tx.txId || "—"}
                             </td>
                             <td className="py-3.5 px-4 font-mono text-[10px] text-[#888178] max-w-[120px] truncate" title={tx.razorpayOrderId}>
@@ -2080,13 +2727,15 @@ export default function AdminPage() {
                             <td className="py-3.5 px-4 text-[#888178]">{tx.date}</td>
                             <td className="py-3.5 px-4 text-right">
                               <span className={`font-bold px-2.5 py-1 rounded text-[10px] ${
-                                tx.status === "Active" || tx.status === "Approved & Active"
+                                tx.isDemo
+                                  ? "bg-amber-100 text-amber-800 border border-amber-300"
+                                  : tx.status === "Active" || tx.status === "Approved & Active"
                                   ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                                   : tx.status === "Revoked"
                                   ? "bg-red-100 text-red-800 border border-red-300"
                                   : "bg-amber-100 text-amber-800 border border-amber-300 animate-pulse"
                               }`}>
-                                {tx.status || "Pending"}
+                                {tx.isDemo ? "Simulated Demo" : (tx.status || "Pending")}
                               </span>
                             </td>
                           </tr>
@@ -2106,5 +2755,14 @@ export default function AdminPage() {
         )}
       </div>
     </div>
+
+    {/* Delete Account Confirmation Dialog */}
+    <DeleteAccountDialog
+      open={deleteDialogOpen}
+      onOpenChange={setDeleteDialogOpen}
+      onConfirm={handleDeleteAccountConfirmed}
+      loading={deleteLoading}
+    />
+    </>
   );
 }

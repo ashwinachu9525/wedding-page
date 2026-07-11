@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import React, { useState, useEffect, Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getInvitationBySlug, InvitationData } from "@/lib/mock-storage";
 import { Sparkles, ArrowLeft, MessageCircle } from "lucide-react";
@@ -28,7 +28,10 @@ type ThemeKey =
   | "peacock"
   | "lotus"
   | "sandalwood"
-  | "banarasi";
+  | "banarasi"
+  | "hindu_royal"
+  | "arabic_royal"
+  | "christian_royal";
 
 const THEME_STYLES: Record<
   ThemeKey,
@@ -46,11 +49,33 @@ const THEME_STYLES: Record<
   lotus: { bg: "bg-[#FFF0F5]", text: "text-[#5C1D34]", accent: "text-[#D8829D]", buttonBg: "bg-[#D8829D] text-white hover:bg-[#C46884]" },
   sandalwood: { bg: "bg-[#1C1510]", text: "text-[#F3E6DA]", accent: "text-[#C19A6B]", buttonBg: "bg-[#C19A6B] text-[#1C1510] hover:bg-[#D3AD7F]" },
   banarasi: { bg: "bg-[#130822]", text: "text-[#F8F2FF]", accent: "text-[#D4AF37]", buttonBg: "bg-[#D4AF37] text-[#130822] hover:bg-[#E6C35C]" },
+  hindu_royal: {
+    bg: "bg-[#2D0A0E] relative before:absolute before:inset-0 before:pointer-events-none before:bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.06)_1px,transparent_1px)] before:bg-[size:24px_24px]",
+    text: "text-[#FAF8F5]",
+    accent: "text-[#FF9933]",
+    buttonBg: "bg-[#FF9933] text-[#2D0A0E] hover:bg-[#E68A2E] font-bold"
+  },
+  arabic_royal: {
+    bg: "bg-[#061B1C] relative before:absolute before:inset-0 before:pointer-events-none before:bg-[radial-gradient(circle_at_center,rgba(230,194,128,0.05)_1px,transparent_1px)] before:bg-[size:32px_32px]",
+    text: "text-[#FAF8F5]",
+    accent: "text-[#E6C280]",
+    buttonBg: "bg-[#E6C280] text-[#061B1C] hover:bg-[#D6B36E] font-bold"
+  },
+  christian_royal: {
+    bg: "bg-[#FAF9F6] relative before:absolute before:inset-0 before:pointer-events-none before:bg-[radial-gradient(circle_at_center,rgba(163,180,200,0.08)_1px,transparent_1px)] before:bg-[size:20px_20px]",
+    text: "text-[#2B3E50]",
+    accent: "text-[#B0C4DE]",
+    buttonBg: "bg-[#2B3E50] text-[#FAF9F6] hover:bg-[#3D5A75] font-bold"
+  },
 };
 
-export default function DynamicCoupleLandingPage() {
+function InviteLandingContent() {
   const params = useParams();
-  const slug = (params?.slug as string) || "aswin-annapoorna";
+  const searchParams = useSearchParams();
+  const guest = searchParams ? searchParams.get("guest") || "" : "";
+  const note = searchParams ? searchParams.get("note") || "" : "";
+
+  const slug = (params?.slug as string) || "rahul-priya-2026";
   const [invite, setInvite] = useState<InvitationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [rsvpOpen, setRsvpOpen] = useState(false);
@@ -61,31 +86,21 @@ export default function DynamicCoupleLandingPage() {
     async function fetchInvite() {
       setLoading(true);
       const cleanSlug = slug.toLowerCase();
-      const baseInvite = getInvitationBySlug(cleanSlug) || getInvitationBySlug("aswin-annapoorna")!;
 
-      let apiFound: any = null;
+      // DB is the source of truth — fetch from API first
       try {
-        const res = await fetch(`/api/invitations`);
-        const all: InvitationData[] = await res.json();
-        apiFound = all.find((i) => i.slug.toLowerCase() === cleanSlug);
+        const res = await fetch(`/api/invitations?slug=${encodeURIComponent(cleanSlug)}`);
+        const data = await res.json();
+        if (data && data.slug) {
+          setInvite(data);
+          setLoading(false);
+          return;
+        }
       } catch (e) {}
 
-      // Check browser localStorage overrides for instant live updates after clicking Save
-      const localSavedStr = localStorage.getItem("vivaha_saved_invitations") || "{}";
-      let localSaved: Record<string, any> = {};
-      try {
-        localSaved = JSON.parse(localSavedStr);
-      } catch (e) {}
-
-      const localFound = localSaved[cleanSlug];
-
-      if (localFound) {
-        setInvite({ ...baseInvite, ...apiFound, ...localFound });
-      } else if (apiFound) {
-        setInvite(apiFound);
-      } else {
-        setInvite(baseInvite);
-      }
+      // Fallback to in-memory mock data if DB unreachable
+      const fallback = getInvitationBySlug(cleanSlug) || getInvitationBySlug("rahul-priya-2026")!;
+      setInvite(fallback);
       setLoading(false);
     }
     fetchInvite();
@@ -168,6 +183,24 @@ export default function DynamicCoupleLandingPage() {
         <span>Custom Celebration URL: /invite/{invite.slug}</span>
       </div>
 
+      {/* Personalized Greeting Card Block */}
+      {guest && (
+        <div className={`w-full py-6 text-center flex flex-col items-center justify-center border-b border-current/10 px-4 ${
+          themeKey === "hindu_royal" ? "bg-[#FF9933]/10 text-[#FF9933]" :
+          themeKey === "arabic_royal" ? "bg-[#E6C280]/15 text-[#E6C280]" :
+          themeKey === "christian_royal" ? "bg-[#2B3E50]/5 text-[#2B3E50]" :
+          "bg-current/[0.05]"
+        }`}>
+          <p className="text-[10px] uppercase tracking-[0.25em] opacity-75 font-semibold">Personalized Invitation For</p>
+          <h2 className="font-serif text-2xl sm:text-3xl font-light mt-1.5">{guest}</h2>
+          {note && (
+            <p className="text-xs italic opacity-85 mt-2.5 max-w-md leading-relaxed">
+              "{note}"
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Sticky Navigation */}
       <Navbar
         coupleNames={invite.coupleNames}
@@ -189,6 +222,7 @@ export default function DynamicCoupleLandingPage() {
           heroBgUrl={invite.heroBgUrl}
           onOpenRSVP={handleOpenRSVP}
           accentClass={styles.accent}
+          themeKey={themeKey}
         />
 
         {/* Editorial Couple's Story & Timeline */}
@@ -215,8 +249,10 @@ export default function DynamicCoupleLandingPage() {
         <GallerySection images={parsedGallery} accentClass={styles.accent} />
       </main>
 
-      {/* Free Plan Advertisement Banner */}
-      <AdBanner slot="landing" className="max-w-4xl mx-auto my-8 px-4" />
+      {/* Free Plan Advertisement Banner — hidden for PRO accounts */}
+      {!invite.isProUser && (
+        <AdBanner slot="landing" className="max-w-4xl mx-auto my-8 px-4" />
+      )}
 
       {/* FAQ & Editorial Footer */}
       <FooterSection
@@ -231,7 +267,16 @@ export default function DynamicCoupleLandingPage() {
         onOpenChange={setRsvpOpen}
         coupleNames={invite.coupleNames}
         buttonClass={styles.buttonBg}
+        slug={invite.slug}
       />
     </div>
+  );
+}
+
+export default function DynamicCoupleLandingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#1F1D1A] text-white flex items-center justify-center font-serif">Loading Invitation Portal...</div>}>
+      <InviteLandingContent />
+    </Suspense>
   );
 }

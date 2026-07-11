@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Bulk print order quantity must be at least 100 cards." }, { status: 400 });
     }
 
-    const adminEmail = "ashwinachu9525@gmail.com";
+    const adminEmail = "support@vivahaluxe.com";
     let emailSent = false;
 
     try {
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
           },
         });
 
-        // 1. Send Notification to Admin Team (ashwinachu9525@gmail.com)
+        // 1. Send Notification to Admin Team (support@vivahaluxe.com)
         const adminHtml = `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #111827; color: #F9FAFB; border: 2px solid #10B981;">
             <h2 style="color: #10B981; margin-top: 0;">🖨️ New Bulk Print Order Placed!</h2>

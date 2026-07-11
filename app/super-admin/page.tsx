@@ -50,7 +50,7 @@ interface UserRecord {
 }
 
 const INITIAL_DEMO_USERS: UserRecord[] = [
-  { id: "demo-1", name: "Aswin K & Annapoorna", username: "aswin-annapoorna", email: "ashwinachu9525@gmail.com", role: "SUPER_ADMIN", status: "ACTIVE", provider: "google", invitationsCount: 1, joinedDate: "July 2026", rsvpsCount: 42, views: 342, isDemo: true, plan: "PRO", subStatus: "ACTIVE" },
+  { id: "demo-1", name: "Rahul Sharma & Priya Mehta", username: "rahul-priya-2026", email: "demo@vivahaluxe.com", role: "SUPER_ADMIN", status: "ACTIVE", provider: "google", invitationsCount: 1, joinedDate: "July 2026", rsvpsCount: 42, views: 342, isDemo: true, plan: "PRO", subStatus: "ACTIVE" },
   { id: "demo-2", name: "Rahul Sharma & Anjali", username: "rahul-anjali", email: "rahul@sharma.in", role: "USER", status: "ACTIVE", provider: "credentials", invitationsCount: 1, joinedDate: "July 2026", rsvpsCount: 18, views: 189, isDemo: true, plan: "PRO", subStatus: "ACTIVE" },
   { id: "demo-3", name: "Vikram & Pooja Rao", username: "vikram-pooja", email: "vikram@rao.org", role: "USER", status: "SUSPENDED", provider: "google", invitationsCount: 1, joinedDate: "June 2026", rsvpsCount: 25, views: 210, isDemo: true, plan: "FREE", subStatus: "EXPIRED" },
   { id: "demo-4", name: "Sneha & Arjun Nair", username: "sneha-arjun", email: "sneha@nair.co", role: "USER", status: "ACTIVE", provider: "credentials", invitationsCount: 1, joinedDate: "July 2026", rsvpsCount: 31, views: 175, isDemo: true, plan: "FREE", subStatus: "EXPIRED" },
@@ -69,10 +69,7 @@ export default function SuperAdminPage() {
   const [announcement, setAnnouncement] = useState("🎉 VivahaLuxe v2.0 Live: 12 New Royal Themes & CockroachDB Prisma Storage Engine deployed!");
   const [printOrders, setPrintOrders] = useState<any[]>([]);
 
-  const [proTransactions, setProTransactions] = useState<any[]>([
-    { txId: "TXN-PRO-88421", userEmail: "ashwinachu9525@gmail.com", coupleNames: "Aswin K & Annapoorna", amount: 499, paymentMethod: "UPI", upiId: "aswin@okaxis", date: "02 Jul 2026", status: "Active" },
-    { txId: "TXN-PRO-77124", userEmail: "rahul@sharma.in", coupleNames: "Rahul Sharma & Anjali", amount: 499, paymentMethod: "CARD", upiId: "N/A", date: "01 Jul 2026", status: "Active" },
-  ]);
+  const [proTransactions, setProTransactions] = useState<any[]>([]);
   const [globalAdConfig, setGlobalAdConfig] = useState({
     enabled: true,
     sponsorName: "Tanishq Royal Wedding Jewels",
@@ -88,48 +85,18 @@ export default function SuperAdminPage() {
   const [newEmail, setNewEmail] = useState("");
 
   useEffect(() => {
-    const auth = sessionStorage.getItem("company_super_admin_auth");
-    if (auth === "true") setIsAuthenticated(true);
+    // Check super-admin session via cookie
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.user?.isSuperAdmin) setIsAuthenticated(true);
+      })
+      .catch(() => {});
 
-    // Load actual registered users from localStorage
-    try {
-      const regStr = localStorage.getItem("vivaha_registered_users") || "{}";
-      const regObj: Record<string, any> = JSON.parse(regStr);
-      const realUsers: UserRecord[] = Object.values(regObj).map((u: any, index: number) => ({
-        id: `reg-${index}-${Date.now()}`,
-        name: u.name || "Registered Couple",
-        username: u.username || u.email?.split("@")[0] || "user",
-        email: u.email || "noemail@domain.com",
-        role: "USER",
-        status: "ACTIVE",
-        provider: "credentials",
-        invitationsCount: 1,
-        joinedDate: "July 2026",
-        rsvpsCount: 0,
-        views: 12,
-        isDemo: false,
-        plan: u.plan || "FREE",
-        subStatus: u.plan === "PRO" ? "ACTIVE" : "EXPIRED",
-      }));
-
-      if (realUsers.length > 0) {
-        setUsersList((prev) => [...realUsers, ...prev.filter((p) => p.isDemo)]);
-      }
-    } catch (e) {}
-
-    // Load Bulk Print Orders
+    // Load Bulk Print Orders (no auth needed — localStorage)
     try {
       const ordStr = localStorage.getItem("vivaha_print_orders") || "[]";
       setPrintOrders(JSON.parse(ordStr));
-    } catch (e) {}
-
-    // Load Pro Transactions
-    try {
-      const txStr = localStorage.getItem("vivaha_pro_transactions");
-      if (txStr) {
-        const parsed = JSON.parse(txStr);
-        setProTransactions((prev) => [...parsed, ...prev.filter((p) => !parsed.some((x: any) => x.txId === p.txId))]);
-      }
     } catch (e) {}
 
     // Load Ad Config
@@ -139,43 +106,118 @@ export default function SuperAdminPage() {
     } catch (e) {}
   }, []);
 
-  const handleToggleUserProPlan = (userId: string) => {
-    let targetEmail = "";
-    let targetNewPlan = "FREE";
-    const updated = usersList.map((u) => {
-      if (u.id === userId) {
-        const newPlan = u.plan === "PRO" ? "FREE" : "PRO";
-        const newSubStatus = newPlan === "PRO" ? "ACTIVE" : "EXPIRED";
-        targetEmail = u.email;
-        targetNewPlan = newPlan;
-        toast.success(`User ${u.name} subscription status updated to: ${newPlan} (${newSubStatus})!`);
-        return { ...u, plan: newPlan as any, subStatus: newSubStatus as any };
+  // Load DB data only after super admin is authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Load real registered users from DB
+    fetch("/api/super-admin/users")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          const dbUsers: UserRecord[] = data.map((u: any) => ({
+            id: u.id,
+            name: u.name || u.email,
+            username: u.username || u.email?.split("@")[0] || "user",
+            email: u.email,
+            role: u.role || "USER",
+            status: u.status || "ACTIVE",
+            provider: u.provider || "credentials",
+            invitationsCount: u.invitationsCount || 0,
+            joinedDate: u.joinedDate || "2026",
+            rsvpsCount: u.rsvpsCount || 0,
+            views: u.views || 0,
+            isDemo: false,
+            plan: u.plan || "FREE",
+            subStatus: u.plan === "PRO" ? "ACTIVE" : "EXPIRED",
+          }));
+          setUsersList((prev) => [...dbUsers, ...prev.filter((p) => p.isDemo)]);
+        }
+      })
+      .catch(() => {});
+
+    // Load Pro Transactions from DB
+    fetch("/api/super-admin/transactions")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setProTransactions(data);
+      })
+      .catch(() => {
+        try {
+          const txStr = localStorage.getItem("vivaha_pro_transactions");
+          if (txStr) setProTransactions(JSON.parse(txStr));
+        } catch (e) {}
+      });
+  }, [isAuthenticated]);
+
+  const handleToggleUserProPlan = async (userId: string) => {
+    const target = usersList.find((u) => u.id === userId);
+    if (!target) return;
+
+    const newPlan = target.plan === "PRO" ? "FREE" : "PRO";
+
+    // Optimistic UI update
+    setUsersList((prev) =>
+      prev.map((u) =>
+        u.id === userId
+          ? { ...u, plan: newPlan as any, subStatus: newPlan === "PRO" ? "ACTIVE" : "EXPIRED" }
+          : u
+      )
+    );
+
+    try {
+      const res = await fetch("/api/super-admin/set-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: target.email, plan: newPlan }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Revert optimistic update on failure
+        setUsersList((prev) =>
+          prev.map((u) =>
+            u.id === userId ? { ...u, plan: target.plan, subStatus: target.subStatus } : u
+          )
+        );
+        toast.error(data.error || "Failed to update plan");
+        return;
       }
-      return u;
-    });
-    setUsersList(updated);
 
-    if (targetEmail) {
-      try {
-        const regStr = localStorage.getItem("vivaha_registered_users") || "[]";
-        const regList = JSON.parse(regStr);
-        const updatedReg = regList.map((u: any) =>
-          u.email === targetEmail ? { ...u, plan: targetNewPlan, isPro: targetNewPlan === "PRO" } : u
-        );
-        localStorage.setItem("vivaha_registered_users", JSON.stringify(updatedReg));
-      } catch (e) {}
+      toast.success(
+        newPlan === "PRO"
+          ? `💎 PRO granted to ${target.name} — no payment required`
+          : `PRO revoked for ${target.name}`
+      );
 
-      try {
-        const txStr = localStorage.getItem("vivaha_pro_transactions") || "[]";
-        let txList = JSON.parse(txStr);
-        txList = txList.map((tx: any) =>
-          tx.userEmail === targetEmail
-            ? { ...tx, status: targetNewPlan === "PRO" ? "Approved & Active" : "Revoked" }
-            : tx
+      // Add a record to the local transactions list for visibility
+      if (newPlan === "PRO") {
+        const adminTx = {
+          txId: `ADMIN-GRANT-${Date.now()}`,
+          userEmail: target.email,
+          coupleNames: target.name,
+          amount: 0,
+          paymentMethod: "Admin Grant",
+          upiId: "N/A",
+          date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+          status: "Approved & Active",
+        };
+        setProTransactions((prev) => [adminTx, ...prev]);
+      } else {
+        setProTransactions((prev) =>
+          prev.map((tx) =>
+            tx.userEmail === target.email ? { ...tx, status: "Revoked" } : tx
+          )
         );
-        localStorage.setItem("vivaha_pro_transactions", JSON.stringify(txList));
-        setProTransactions(txList);
-      } catch (e) {}
+      }
+    } catch (err) {
+      toast.error("Network error — could not update plan");
+      // Revert
+      setUsersList((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, plan: target.plan, subStatus: target.subStatus } : u
+        )
+      );
     }
   };
 
@@ -228,18 +270,17 @@ export default function SuperAdminPage() {
     e.preventDefault();
     setLoadingAuth(true);
     try {
-      const res = await fetch("/api/super-admin/login", {
+      const res = await fetch("/api/auth/session-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: loginUser, password: loginPass }),
+        body: JSON.stringify({ type: "super-admin", username: loginUser, password: loginPass }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setIsAuthenticated(true);
-        sessionStorage.setItem("company_super_admin_auth", "true");
-        toast.success("Super Admin Authenticated with full governance controls!");
+        toast.success("Super Admin access granted!");
       } else {
-        toast.error(data.error || "Invalid credentials matching .env");
+        toast.error(data.error || "Invalid credentials");
       }
     } catch (err) {
       toast.error("Failed to authenticate against server .env");
@@ -248,8 +289,8 @@ export default function SuperAdminPage() {
     }
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("company_super_admin_auth");
+  const handleLogout = async () => {
+    await fetch("/api/auth/session", { method: "DELETE" });
     setIsAuthenticated(false);
     toast.success("Signed out of Super Admin Command Hub");
   };
@@ -436,15 +477,15 @@ export default function SuperAdminPage() {
           </div>
           <div className="bg-gray-900 border border-gray-800 p-5 rounded-sm">
             <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold block">Free Accounts</span>
-            <p className="text-2xl font-serif mt-1 text-gray-300">{usersList.filter((u) => u.plan !== "PRO").length}</p>
+            <p className="text-2xl font-serif mt-1 text-gray-300">{usersList.filter((u) => !u.isDemo && u.plan !== "PRO").length}</p>
           </div>
           <div className="bg-gray-900 border border-gray-800 p-5 rounded-sm">
             <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold block">💎 Pro Subscribers</span>
-            <p className="text-2xl font-serif mt-1 text-purple-400">{usersList.filter((u) => u.plan === "PRO").length}</p>
+            <p className="text-2xl font-serif mt-1 text-purple-400">{usersList.filter((u) => !u.isDemo && u.plan === "PRO").length}</p>
           </div>
           <div className="bg-gray-900 border border-gray-800 p-5 rounded-sm">
             <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold block">Pro Revenue</span>
-            <p className="text-2xl font-serif mt-1 text-amber-400">₹{(usersList.filter((u) => u.plan === "PRO").length * 499).toLocaleString("en-IN")}</p>
+            <p className="text-2xl font-serif mt-1 text-amber-400">₹{(usersList.filter((u) => !u.isDemo && u.plan === "PRO").length * 499).toLocaleString("en-IN")}</p>
           </div>
           <div className="bg-gray-900 border border-gray-800 p-5 rounded-sm">
             <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold block">Showcase Demo</span>
@@ -667,7 +708,7 @@ export default function SuperAdminPage() {
                     <p className="text-xs text-gray-400">Toggle individual account statuses between Free (ad-supported) and Pro (₹499 ad-free).</p>
                   </div>
                   <span className="text-xs bg-purple-950 text-purple-300 px-3 py-1 rounded-full border border-purple-800 font-bold">
-                    Pro Conversion Rate: {((usersList.filter((u) => u.plan === "PRO").length / Math.max(1, usersList.length)) * 100).toFixed(0)}%
+                    Pro Conversion Rate: {((usersList.filter((u) => !u.isDemo && u.plan === "PRO").length / Math.max(1, usersList.filter((u) => !u.isDemo).length)) * 100).toFixed(0)}%
                   </span>
                 </div>
 
@@ -683,7 +724,14 @@ export default function SuperAdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                      {usersList.map((u) => (
+                      {usersList.filter((u) => !u.isDemo).length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-10 text-center text-gray-500 text-xs italic">
+                            No real registered users yet. Pro subscriptions will appear here once users sign up.
+                          </td>
+                        </tr>
+                      ) : (
+                        usersList.filter((u) => !u.isDemo).map((u) => (
                         <tr key={u.id} className="hover:bg-gray-800/40 transition-colors">
                           <td className="py-3.5 px-3 font-bold text-white">{u.name}</td>
                           <td className="py-3.5 px-3 text-gray-300">{u.email}</td>
@@ -718,7 +766,8 @@ export default function SuperAdminPage() {
                             </button>
                           </td>
                         </tr>
-                      ))}
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -746,13 +795,32 @@ export default function SuperAdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
-                      {proTransactions.map((tx, idx) => (
+                      {proTransactions.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="py-10 text-center text-gray-500 text-xs italic">
+                            No real payment transactions yet. Razorpay payments will appear here automatically.
+                          </td>
+                        </tr>
+                      ) : (
+                        proTransactions.map((tx, idx) => (
                         <tr key={idx} className="hover:bg-gray-800/40 transition-colors">
                           <td className="py-3.5 px-3 font-mono font-bold text-amber-400">{tx.txId}</td>
                           <td className="py-3.5 px-3 text-gray-300">{tx.userEmail}</td>
                           <td className="py-3.5 px-3 font-bold text-white">{tx.coupleNames}</td>
-                          <td className="py-3.5 px-3 font-serif font-bold text-purple-400">₹{tx.amount}</td>
-                          <td className="py-3.5 px-3 text-gray-400">{tx.paymentMethod} ({tx.upiId})</td>
+                          <td className="py-3.5 px-3 font-serif font-bold text-purple-400">
+                            {tx.amount === 0 ? (
+                              <span className="text-blue-400">Free (Admin)</span>
+                            ) : (
+                              <>₹{tx.amount}</>
+                            )}
+                          </td>
+                          <td className="py-3.5 px-3 text-gray-400">
+                            {tx.grantedByAdmin ? (
+                              <span className="px-2 py-0.5 bg-blue-950 text-blue-300 border border-blue-800 rounded text-[10px] font-bold uppercase tracking-wider">Admin Grant</span>
+                            ) : (
+                              <>{tx.paymentMethod} ({tx.upiId})</>
+                            )}
+                          </td>
                           <td className="py-3.5 px-3 text-gray-400">{tx.date}</td>
                           <td className="py-3.5 px-3">
                             <span className={`font-bold px-2 py-0.5 rounded text-[10px] border ${
@@ -786,7 +854,8 @@ export default function SuperAdminPage() {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

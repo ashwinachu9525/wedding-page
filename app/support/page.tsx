@@ -78,7 +78,7 @@ export default function SupportPage() {
                 <span>How do I create a dynamic invitation link?</span>
               </h3>
               <p className="text-xs text-[#55514C] leading-relaxed">
-                In your Admin Dashboard (`/admin`), go to the **WhatsApp Invite Studio** tab. You can specify custom couple names or guest names, pick one of 12 luxury card themes, and generate an SEO-friendly URL slug like `/invite/aswin-annapoorna`.
+                In your Admin Dashboard (`/admin`), go to the **WhatsApp Invite Studio** tab. You can specify custom couple names or guest names, pick one of 12 luxury card themes, and generate an SEO-friendly URL slug like `/invite/rahul-priya-2026`.
               </p>
             </div>
 
@@ -137,7 +137,7 @@ export default function SupportPage() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Aswin K"
+                    placeholder="e.g. Rahul Sharma"
                     className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-3.5 py-2.5 text-xs rounded-xs focus:outline-hidden focus:border-[#22201E]"
                   />
                 </div>

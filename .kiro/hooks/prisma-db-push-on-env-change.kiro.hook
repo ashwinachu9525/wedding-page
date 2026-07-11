@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Auto Prisma DB Push",
+  "description": "Runs `prisma db push` automatically whenever .env.local is saved, keeping the database schema in sync without manual intervention.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".env.local"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "cd /Users/aswin/Documents/personal/Freelance/wedding-page && npx prisma db push",
+    "timeout": 60
+  }
+}

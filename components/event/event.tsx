@@ -42,6 +42,14 @@ export function EventSection({
       const description = ev.desc || `Wedding Celebration at ${ev.venue}`;
       const location = ev.venue;
 
+      // Parse ev.time into a Date — supports "Nov 21, 2026 09:30" or "Nov 21, 9:30 AM"
+      const parsedDate = new Date(ev.time);
+      const startDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+      const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // +2 hours
+
+      const fmt = (d: Date) =>
+        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+
       const icsContent = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -50,8 +58,8 @@ export function EventSection({
         `SUMMARY:${title}`,
         `DESCRIPTION:${description}`,
         `LOCATION:${location}`,
-        "DTSTART:20261121T040000Z",
-        "DTEND:20261121T080000Z",
+        `DTSTART:${fmt(startDate)}`,
+        `DTEND:${fmt(endDate)}`,
         "END:VEVENT",
         "END:VCALENDAR",
       ].join("\r\n");

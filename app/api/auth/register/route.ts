@@ -1,17 +1,62 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import bcrypt from "bcryptjs";
+import { getPrismaClient } from "@/lib/prisma";
+import { storeOtp } from "@/app/api/auth/verify-otp/route";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, name } = body;
+    const { email, name, password, username } = body;
 
     if (!email) {
       return NextResponse.json({ error: "Email address is required" }, { status: 400 });
     }
 
-    // Generate 6-digit verification OTP
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Generate 6-digit verification OTP and store server-side
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    storeOtp(cleanEmail, otpCode);
+
+    // Upsert the user in the DB (create if new, update OTP fields if resending)
+    const prisma = getPrismaClient();
+    if (prisma && password) {
+      try {
+        const existing = await prisma.user.findUnique({ where: { email: cleanEmail } });
+        if (existing && existing.emailVerified) {
+          return NextResponse.json({ error: "An account with this email already exists. Please sign in." }, { status: 409 });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Derive a unique username
+        let base = (username || cleanEmail.split("@")[0]).replace(/[^a-z0-9]/gi, "").toLowerCase() || "user";
+        let finalUsername = base;
+        if (!existing) {
+          for (let i = 0; i < 6; i++) {
+            const taken = await prisma.user.findUnique({ where: { username: finalUsername } as any });
+            if (!taken) break;
+            finalUsername = `${base}${Math.floor(1000 + Math.random() * 9000)}`;
+          }
+        }
+
+        await prisma.user.upsert({
+          where: { email: cleanEmail },
+          update: { name: name || undefined, password: hashedPassword },
+          create: {
+            email: cleanEmail,
+            name: name || undefined,
+            password: hashedPassword,
+            username: existing?.username || finalUsername,
+            provider: "credentials",
+            emailVerified: false,
+          },
+        });
+      } catch (dbErr) {
+        console.warn("[Register] DB upsert failed:", dbErr);
+      }
+    }
 
     let emailSent = false;
     try {
@@ -45,20 +90,20 @@ export async function POST(req: Request) {
               <p style="font-size: 12px; color: #888178;">This OTP expires in 15 minutes. Do not share this code with anyone.</p>
             </div>
             <div style="text-align: center; margin-top: 20px; font-size: 11px; color: #A09A90;">
-              VivahaLuxe Platform Security • CockroachDB Prisma Cloud Engine
+              VivahaLuxe Platform Security
             </div>
           </div>
         `;
 
         await transporter.sendMail({
           from: process.env.SMTP_FROM || `"VivahaLuxe Platform" <${process.env.SMTP_USER}>`,
-          to: email,
+          to: cleanEmail,
           subject: `✨ Your VivahaLuxe Verification OTP: ${otpCode}`,
           html: htmlContent,
         });
         emailSent = true;
       } else {
-        console.log(`[SMTP Verification Notice] Simulated 6-digit OTP sent to ${email}: ${otpCode}`);
+        console.log(`[SMTP Dev] OTP for ${cleanEmail}: ${otpCode}`);
       }
     } catch (smtpErr) {
       console.warn("SMTP email dispatch failed:", smtpErr);
@@ -67,10 +112,12 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       message: "Verification OTP dispatched!",
-      otpCode,
+      // Only expose OTP in dev when email not sent — never in production
+      ...(emailSent ? {} : { otpCode }),
       emailSent,
     });
   } catch (e) {
+    console.error("[Register error]", e);
     return NextResponse.json({ error: "Failed to dispatch verification OTP" }, { status: 500 });
   }
 }

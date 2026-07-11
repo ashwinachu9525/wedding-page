@@ -16,39 +16,37 @@ interface FooterSectionProps {
 }
 
 export function FooterSection({
-  coupleNames = "Aswin & Annapoorna",
-  faqs = [
-    { q: "What is the dress code?", a: "Traditional Indian ethnic or formal western attire. We encourage bright celebration colors!" },
-    { q: "Is valet parking available?", a: "Yes, complimentary valet parking is provided at both wedding venues." },
-    { q: "Can I bring additional guests?", a: "Due to venue capacity, please adhere to the guest count listed on your personal invitation card." },
-  ],
+  coupleNames = "Rahul Sharma & Priya Mehta",
+  faqs,
   accentClass = "text-[#D4AF37]",
 }: FooterSectionProps) {
   return (
     <footer id="faq" className="bg-current/5 border-t border-current/15 pt-16 pb-12 px-4 sm:px-8">
       <div className="max-w-5xl mx-auto space-y-16">
         {/* FAQ Accordion / Grid */}
-        <div className="space-y-8">
-          <div className="text-center space-y-2">
-            <div className="flex items-center justify-center gap-2">
-              <HelpCircle className={`w-4 h-4 ${accentClass}`} />
-              <span className="text-xs uppercase tracking-[0.3em] opacity-75">Frequently Asked Questions</span>
-            </div>
-            <h2 className="font-serif text-3xl sm:text-4xl">Everything You Need to Know</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            {faqs.map((item, idx) => (
-              <div key={idx} className="p-6 rounded-sm bg-current/[0.04] border border-current/15 space-y-2 shadow-2xs">
-                <h3 className="font-serif text-lg font-medium flex items-start gap-2">
-                  <span className={`${accentClass} font-bold`}>Q.</span>
-                  <span>{item.q}</span>
-                </h3>
-                <p className="text-xs opacity-80 leading-relaxed pl-6">{item.a}</p>
+        {faqs && faqs.length > 0 && (
+          <div className="space-y-8">
+            <div className="text-center space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <HelpCircle className={`w-4 h-4 ${accentClass}`} />
+                <span className="text-xs uppercase tracking-[0.3em] opacity-75">Frequently Asked Questions</span>
               </div>
-            ))}
+              <h2 className="font-serif text-3xl sm:text-4xl">Everything You Need to Know</h2>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+              {faqs.map((item, idx) => (
+                <div key={idx} className="p-6 rounded-sm bg-current/[0.04] border border-current/15 space-y-2 shadow-2xs">
+                  <h3 className="font-serif text-lg font-medium flex items-start gap-2">
+                    <span className={`${accentClass} font-bold`}>Q.</span>
+                    <span>{item.q}</span>
+                  </h3>
+                  <p className="text-xs opacity-80 leading-relaxed pl-6">{item.a}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Editorial Brand Footer */}
         <div className="pt-12 border-t border-current/15 text-center space-y-6">

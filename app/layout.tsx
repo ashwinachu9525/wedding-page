@@ -40,7 +40,7 @@ export default function RootLayout({
         )}
         {/* Google AdSense — plain script tag required; Next.js Script adds data-nscript which AdSense rejects */}
         {isRealAdSense && (
-          // eslint-disable-next-line @next/next/no-sync-scripts
+           
           <script
             async
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_PUBLISHER_ID}`}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
+import { getPrismaClient } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
@@ -13,12 +14,17 @@ export async function POST(req: Request) {
       userEmail,
       amount,
       paymentMethod,
-      isMock = false,
     } = body;
 
     // ── 1. Signature Verification ──────────────────────────────────────────────
-    let isValid = isMock; // skip verification for dev mock orders
-    if (!isMock && process.env.RAZORPAY_KEY_SECRET) {
+    // isMock is determined server-side by checking if order ID has our mock prefix
+    const isMock = typeof razorpay_order_id === "string" && razorpay_order_id.startsWith("order_mock_");
+    let isValid = false;
+
+    if (isMock) {
+      // Mock orders are only valid in dev (no real Razorpay keys configured)
+      isValid = !process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_KEY_SECRET.startsWith("rzp_test_");
+    } else if (process.env.RAZORPAY_KEY_SECRET) {
       const generatedSignature = crypto
         .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
         .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -50,34 +56,35 @@ export async function POST(req: Request) {
       isMock,
     };
 
-    // ── 3. Persist to CockroachDB (best-effort via raw SQL) ───────────────────
+    // ── 3. Persist to DB via Prisma (reuses same SSL connection) ─────────────
     try {
-      const { Pool } = await import("pg");
-      const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS vivaha_pro_payments (
-          id SERIAL PRIMARY KEY,
-          tx_id TEXT UNIQUE,
-          razorpay_order_id TEXT,
-          razorpay_payment_id TEXT,
-          razorpay_signature TEXT,
-          couple_names TEXT,
-          user_email TEXT,
-          amount INTEGER,
-          currency TEXT DEFAULT 'INR',
-          payment_method TEXT,
-          status TEXT DEFAULT 'Approved & Active',
-          plan TEXT DEFAULT 'PRO',
-          is_mock BOOLEAN DEFAULT FALSE,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        );
-      `);
-      await pool.query(
-        `INSERT INTO vivaha_pro_payments
-         (tx_id, razorpay_order_id, razorpay_payment_id, razorpay_signature, couple_names, user_email, amount, currency, payment_method, status, plan, is_mock)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-         ON CONFLICT (tx_id) DO NOTHING`,
-        [
+      const prisma = getPrismaClient();
+      if (prisma) {
+        await prisma.$executeRawUnsafe(`
+          CREATE TABLE IF NOT EXISTS vivaha_pro_payments (
+            id SERIAL PRIMARY KEY,
+            tx_id TEXT UNIQUE,
+            razorpay_order_id TEXT,
+            razorpay_payment_id TEXT,
+            razorpay_signature TEXT,
+            couple_names TEXT,
+            user_email TEXT,
+            amount INTEGER DEFAULT 0,
+            currency TEXT DEFAULT 'INR',
+            payment_method TEXT,
+            status TEXT DEFAULT 'Approved & Active',
+            plan TEXT DEFAULT 'PRO',
+            is_mock BOOLEAN DEFAULT FALSE,
+            granted_by_admin BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+          )
+        `);
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO vivaha_pro_payments
+             (tx_id, razorpay_order_id, razorpay_payment_id, razorpay_signature,
+              couple_names, user_email, amount, currency, payment_method, status, plan, is_mock)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           ON CONFLICT (tx_id) DO NOTHING`,
           paymentRecord.txId,
           paymentRecord.razorpayOrderId,
           paymentRecord.razorpayPaymentId,
@@ -89,12 +96,11 @@ export async function POST(req: Request) {
           paymentRecord.paymentMethod,
           paymentRecord.status,
           paymentRecord.plan,
-          paymentRecord.isMock,
-        ]
-      );
-      await pool.end();
+          paymentRecord.isMock
+        );
+      }
     } catch (dbErr) {
-      console.warn("[DB Write Warning] CockroachDB insert skipped:", dbErr);
+      console.warn("[DB Write Warning] Payment insert skipped:", dbErr);
     }
 
     // ── 4. Send Confirmation Emails ────────────────────────────────────────────
@@ -127,7 +133,7 @@ export async function POST(req: Request) {
 
         await transporter.sendMail({
           from: process.env.SMTP_FROM,
-          to: "ashwinachu9525@gmail.com",
+          to: "support@vivahaluxe.com",
           subject: `💎 Pro Subscription Payment Received: ${coupleNames} — ₹${amount} [${razorpay_payment_id || razorpay_order_id}]`,
           html: adminHtml,
         });

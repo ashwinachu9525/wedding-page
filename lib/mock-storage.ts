@@ -21,14 +21,15 @@ export interface InvitationData {
   viewCount: number;
   eventsJson: string;
   galleryJson: string;
+  isProUser?: boolean;
 }
 
 const DEFAULT_INVITATIONS: InvitationData[] = [
   {
     id: "inv-1",
-    slug: "aswin-annapoorna",
+    slug: "rahul-priya-2026",
     title: "The Royal Wedding Celebration",
-    coupleNames: "Aswin K & Annapoorna",
+    coupleNames: "Rahul Sharma & Priya Mehta",
     brideDetails: "Daughter of Sri K. Ramachandran & Smt. Lakshmi Devi",
     groomDetails: "Son of Sri V. Krishnan & Smt. Saraswathi",
     weddingDate: "2026-11-21T10:30:00",
@@ -168,7 +169,7 @@ const DEFAULT_INVITATIONS: InvitationData[] = [
   },
 ];
 
-let memoryInvitations = [...DEFAULT_INVITATIONS];
+const memoryInvitations = [...DEFAULT_INVITATIONS];
 
 export function getInvitationBySlug(slug: string): InvitationData | null {
   const cleanSlug = slug.toLowerCase().trim();

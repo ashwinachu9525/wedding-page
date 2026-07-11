@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -10,126 +10,200 @@ export default function LoginPage() {
   const router = useRouter();
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleNormalLogin = (e: React.FormEvent) => {
+  const handleNormalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!usernameOrEmail || !password) {
       toast.error("Please enter both email/username and password.");
       return;
     }
 
-    if (usernameOrEmail === "superadmin") {
-      if (password !== "admin123" && password !== "superadmin") {
-        toast.error("Invalid superadmin password (try: admin123)");
-        return;
+    setLoading(true);
+
+    // ── Super Admin shortcut ──────────────────────────────────────────────
+    if (usernameOrEmail === "superadmin" || usernameOrEmail === (process.env.NEXT_PUBLIC_SUPER_ADMIN_USERNAME || "superadmin")) {
+      const res = await fetch("/api/auth/session-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "super-admin", username: usernameOrEmail, password }),
+      });
+      const data = await res.json();
+      setLoading(false);
+      if (res.ok && data.success) {
+        toast.success("Logged in as Super Admin!");
+        router.push("/super-admin");
+      } else {
+        toast.error(data.error || "Invalid super admin credentials (try: vivahaluxe2026)");
       }
-      sessionStorage.setItem("vivaha_user", JSON.stringify({ name: "Super Admin", role: "SUPER_ADMIN", username: usernameOrEmail }));
-      toast.success("Logged in as Super Admin!");
-      router.push("/super-admin");
       return;
     }
 
     const cleanInput = usernameOrEmail.trim().toLowerCase();
-    const existingUsersStr = localStorage.getItem("vivaha_registered_users") || "{}";
-    let existingUsers: Record<string, any> = {};
-    try {
-      existingUsers = JSON.parse(existingUsersStr);
-    } catch (err) {}
 
-    // Also support built-in demo credentials for quick evaluation
+    // ── Demo account ──────────────────────────────────────────────────────
     if (cleanInput === "demo@vivahaluxe.com" && password === "demo123") {
-      const demoUser = {
-        name: "Demo Host Couple",
-        email: "demo@vivahaluxe.com",
-        role: "USER",
-        onboarded: true,
-        coupleNames: "Aswin & Annapoorna",
-        slug: "aswin-annapoorna",
-        isDemo: true,
-      };
-      sessionStorage.setItem("vivaha_user", JSON.stringify(demoUser));
-      sessionStorage.setItem("admin_authenticated", "true");
-      sessionStorage.setItem("vivaha_onboarded", "true");
-      toast.success("Signed in with demo evaluation account!");
-      router.push("/admin");
+      const res = await fetch("/api/auth/session-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "demo" }),
+      });
+      const data = await res.json();
+      setLoading(false);
+      if (res.ok && data.success) {
+        toast.success("Signed in with demo evaluation account!");
+        router.push("/admin");
+      } else {
+        toast.error("Demo login failed");
+      }
       return;
     }
 
-    const user = existingUsers[cleanInput];
-    if (!user) {
-      toast.error("Account Not Found!", {
-        description: "Please register a new account or use demo credentials: demo@vivahaluxe.com / demo123",
+    // ── Regular credentials login ─────────────────────────────────────────
+    const res = await fetch("/api/auth/session-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "credentials", email: cleanInput, password }),
+    });
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) {
+      if (data.error === "EMAIL_NOT_VERIFIED") {
+        toast.error("Email Verification Required", {
+          description: "Please complete your 6-digit email OTP verification before signing in.",
+        });
+        router.push(`/auth/verify?email=${encodeURIComponent(data.email || cleanInput)}`);
+        return;
+      }
+      toast.error(data.error || "Login failed", {
+        description: res.status === 404 ? "Please register a new account or use demo credentials: demo@vivahaluxe.com / demo123" : undefined,
       });
       return;
     }
 
-    if (user.password !== password) {
-      toast.error("Invalid Credentials", {
-        description: "The password you entered is incorrect. Please verify and try again.",
-      });
-      return;
-    }
-
-    if (!user.verified) {
-      toast.error("Email Verification Required", {
-        description: "Please complete your 6-digit email OTP verification before signing in.",
-      });
-      router.push(`/auth/verify?email=${encodeURIComponent(user.email)}`);
-      return;
-    }
-
-    sessionStorage.setItem("vivaha_user", JSON.stringify(user));
-    sessionStorage.setItem("admin_authenticated", "true");
-    if (user.onboarded) {
-      sessionStorage.setItem("vivaha_onboarded", "true");
-      toast.success(`Welcome back, ${user.name}!`, {
-        description: "Opening Couple Studio Dashboard...",
-      });
+    const user = data.user;
+    toast.success(`Welcome back, ${user?.name || ""}!`, { description: "Opening Couple Studio Dashboard..." });
+    if (user?.onboarded) {
       router.push("/admin");
     } else {
-      sessionStorage.removeItem("vivaha_onboarded");
-      toast.success("Authentication Successful!", {
-        description: "Please complete your one-time celebration setup.",
-      });
       router.push("/admin/onboarding");
     }
   };
 
-  const handleGoogleLogin = () => {
-    toast.loading("Connecting to Google OAuth security gateway...");
-    setTimeout(() => {
-      toast.dismiss();
-      const existingUsersStr = localStorage.getItem("vivaha_registered_users") || "{}";
-      let existingUsers: Record<string, any> = {};
-      try {
-        existingUsers = JSON.parse(existingUsersStr);
-      } catch (err) {}
+  // ── Google Identity Services ─────────────────────────────────────────────
+  const handleCredentialResponse = async (resp: any) => {
+    try {
+      toast.loading("Verifying Google account...");
+      const idToken = resp?.credential;
+      if (!idToken) throw new Error("No credential from Google");
 
-      const googleEmail = "ashwinachu9525@gmail.com";
-      let user = existingUsers[googleEmail];
-      if (!user) {
-        user = {
-          name: "Aswin K (Google)",
-          email: googleEmail,
-          role: "USER",
-          provider: "google",
-          verified: true,
-          onboarded: false,
-        };
-        existingUsers[googleEmail] = user;
-        localStorage.setItem("vivaha_registered_users", JSON.stringify(existingUsers));
+      // First verify token + upsert user via existing /api/auth/google
+      const googleRes = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+      const googleData = await googleRes.json();
+      toast.dismiss();
+
+      if (!googleRes.ok || !googleData.success) {
+        toast.error(googleData.error || "Google sign-in failed");
+        return;
       }
 
-      sessionStorage.setItem("vivaha_user", JSON.stringify(user));
-      sessionStorage.setItem("admin_authenticated", "true");
-      if (user.onboarded) {
-        sessionStorage.setItem("vivaha_onboarded", "true");
+      const googleUser = googleData.user;
+
+      // Now set the session cookie
+      const sessionRes = await fetch("/api/auth/session-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "google", googleUser }),
+      });
+      const sessionData = await sessionRes.json();
+
+      if (!sessionRes.ok || !sessionData.success) {
+        toast.error("Failed to create session. Please try again.");
+        return;
+      }
+
+      const user = sessionData.user;
+      if (user?.onboarded) {
         toast.success("Successfully authenticated with Google!");
         router.push("/admin");
       } else {
-        sessionStorage.removeItem("vivaha_onboarded");
         toast.success("Google account linked! Complete your one-time celebration setup.");
         router.push("/admin/onboarding");
+      }
+    } catch (err: any) {
+      toast.dismiss();
+      toast.error(err?.message || "Google sign-in failed");
+    }
+  };
+
+  useEffect(() => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+
+    const init = () => {
+      if (!(window as any).google?.accounts?.id) return;
+      try {
+        (window as any).google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (resp: any) => handleCredentialResponse(resp),
+        });
+        (window as any).google.accounts.id.renderButton(
+          document.getElementById("googleSignInDiv"),
+          { theme: "outline", size: "large", width: "100%" }
+        );
+      } catch (e) {}
+    };
+
+    if (!document.getElementById("gsiScript")) {
+      const s = document.createElement("script");
+      s.src = "https://accounts.google.com/gsi/client";
+      s.id = "gsiScript";
+      s.async = true;
+      s.defer = true;
+      s.onload = init;
+      document.head.appendChild(s);
+    } else {
+      init();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fallback quick simulation when no Google client ID is configured
+  const handleGoogleLogin = async () => {
+    if (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) return;
+    toast.loading("Connecting to Google OAuth security gateway...");
+    setTimeout(async () => {
+      toast.dismiss();
+      const simulatedUser = {
+        id: "sim-001",
+        email: "rahul.priya.demo@vivahaluxe.com",
+        name: "Rahul K (Google)",
+        role: "USER",
+        provider: "google",
+        onboarded: true,
+        slug: null,
+      };
+      const res = await fetch("/api/auth/session-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "google", googleUser: simulatedUser }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const user = data.user;
+        toast.success("Google simulation signed in!");
+        if (user?.onboarded) {
+          router.push("/admin");
+        } else {
+          router.push("/admin/onboarding");
+        }
+      } else {
+        toast.error("Simulation failed");
       }
     }, 1000);
   };
@@ -148,102 +222,81 @@ export default function LoginPage() {
           <h1 className="font-serif text-3xl font-light">Sign In to Platform</h1>
         </div>
 
-        {/* Google OAuth Option */}
-        <button
-          onClick={handleGoogleLogin}
-          type="button"
-          className="w-full bg-white text-slate-800 py-3.5 px-4 rounded-xs font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-2.5 hover:bg-slate-100 transition-all shadow-md"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24">
-            <path
-              fill="#4285F4"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-            />
-          </svg>
-          <span>Continue with Google</span>
-        </button>
-
-        <div className="relative flex items-center justify-center my-4">
-          <div className="border-t border-white/15 w-full" />
-          <span className="bg-[#1F1D1A] px-3 text-[10px] uppercase tracking-widest text-[#888178] absolute">
-            Or normal sign in
-          </span>
+        {/* Google Sign In */}
+        <div className="w-full">
+          <div id="googleSignInDiv" />
+          {!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && (
+            <button
+              onClick={handleGoogleLogin}
+              type="button"
+              className="w-full mt-2 bg-white text-slate-800 py-3.5 px-4 rounded-xs font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-2.5 hover:bg-slate-100 transition-all shadow-md"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+              </svg>
+              <span>Sign in with Google</span>
+            </button>
+          )}
         </div>
 
-        {/* Username/Password Form */}
+        <div className="relative flex items-center justify-center">
+          <div className="border-t border-white/10 w-full" />
+          <span className="bg-[#1F1D1A] px-3 text-[10px] uppercase tracking-widest text-[#888178] absolute font-bold">Or sign in with email</span>
+        </div>
+
         <form onSubmit={handleNormalLogin} className="space-y-4">
           <div>
-            <label className="block text-xs uppercase tracking-wider text-[#C4B7A6] mb-1.5 font-semibold">
-              Username or Email
+            <label className="block text-xs uppercase tracking-wider text-[#C4B7A6] mb-1 font-semibold">
+              Email / Username
             </label>
             <input
               type="text"
-              required
-              autoComplete="username"
-              autoCorrect="off"
-              autoCapitalize="none"
               value={usernameOrEmail}
               onChange={(e) => setUsernameOrEmail(e.target.value)}
-              placeholder="Enter your registered email or username"
-              className="w-full bg-black/40 border border-white/20 px-3.5 py-3 text-xs rounded-xs focus:outline-hidden focus:border-[#D4AF37]"
+              placeholder="you@domain.com or superadmin"
+              className="w-full bg-white/5 border border-white/15 px-3.5 py-3 text-sm rounded-xs text-white focus:outline-none focus:border-[#D4AF37] transition-colors"
             />
           </div>
-
           <div>
-            <label className="block text-xs uppercase tracking-wider text-[#C4B7A6] mb-1.5 font-semibold">
+            <label className="block text-xs uppercase tracking-wider text-[#C4B7A6] mb-1 font-semibold">
               Password
             </label>
             <input
               type="password"
-              required
-              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
-              className="w-full bg-black/40 border border-white/20 px-3.5 py-3 text-xs rounded-xs focus:outline-hidden focus:border-[#D4AF37]"
+              placeholder="••••••••"
+              className="w-full bg-white/5 border border-white/15 px-3.5 py-3 text-sm rounded-xs text-white focus:outline-none focus:border-[#D4AF37] transition-colors"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-[#D4AF37] text-[#1F1D1A] font-bold py-3.5 rounded-xs uppercase tracking-widest text-xs hover:bg-[#E6C35C] transition-colors shadow-lg mt-2"
+            disabled={loading}
+            className="w-full bg-[#D4AF37] hover:bg-[#C5A059] disabled:opacity-60 text-[#1F1D1A] py-4 rounded-xs text-xs uppercase tracking-[0.2em] font-bold transition-all shadow-lg mt-2 flex items-center justify-center gap-2"
           >
-            Sign In with Credentials
+            <Lock className="w-4 h-4" />
+            <span>{loading ? "Signing In..." : "Sign In to Studio"}</span>
           </button>
         </form>
 
-        <div className="bg-[#1F1D1A]/90 p-3.5 rounded-xs border border-[#D4AF37]/30 space-y-1.5 shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-bold flex items-center gap-1">
-              <Sparkles className="w-3 h-3" />
-              <span>Demo Evaluation Credentials</span>
-            </span>
-            <span className="text-[9px] bg-[#D4AF37]/20 text-[#D4AF37] px-1.5 py-0.5 rounded uppercase font-mono">Instant Test</span>
-          </div>
-          <div className="text-[11px] font-mono text-[#C4B7A6] flex flex-col sm:flex-row sm:items-center justify-between gap-1 bg-black/40 p-2 rounded border border-white/5">
-            <span>Email: <strong className="text-white select-all">demo@vivahaluxe.com</strong></span>
-            <span>Pass: <strong className="text-white select-all">demo123</strong></span>
-          </div>
+        <p className="text-[10px] text-center text-[#888178]">
+          Demo account: <span className="text-[#D4AF37] font-mono">demo@vivahaluxe.com</span> / <span className="text-[#D4AF37] font-mono">demo123</span>
+        </p>
+
+        <div className="text-center text-xs text-[#888178] pt-2 border-t border-white/10">
+          New to VivahaLuxe?{" "}
+          <Link href="/auth/register" className="text-[#D4AF37] hover:underline font-semibold">
+            Create an Account
+          </Link>
         </div>
 
-        <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs">
-          <Link href="/auth/register" className="text-[#D4AF37] hover:underline">
-            Don&apos;t have an account? Register
-          </Link>
-          <Link href="/" className="text-[#C4B7A6] hover:text-white">
-            Return Home
+        <div className="text-center">
+          <Link href="/" className="text-[10px] text-[#888178] hover:text-[#C4B7A6] flex items-center justify-center gap-1 transition-colors">
+            <ArrowLeft className="w-3 h-3" /> Back to Landing Page
           </Link>
         </div>
       </div>
