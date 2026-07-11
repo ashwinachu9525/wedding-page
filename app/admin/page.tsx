@@ -247,10 +247,7 @@ export default function AdminPage() {
   const [heroBgUrl, setHeroBgUrl] = useState("https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=1974&auto=format&fit=crop");
   const [musicUrl, setMusicUrl] = useState("");
 
-  const [photosList, setPhotosList] = useState<any[]>([
-    { id: "1", src: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=1974&auto=format&fit=crop", caption: "Mandap Moments", category: "ceremony" },
-    { id: "2", src: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1974&auto=format&fit=crop", caption: "Garden Celebration", category: "reception" },
-  ]);
+  const [photosList, setPhotosList] = useState<any[]>([]);
   const [photoSrcInput, setPhotoSrcInput] = useState("");
   const [photoCaptionInput, setPhotoCaptionInput] = useState("");
   const [photoCategoryInput, setPhotoCategoryInput] = useState("ceremony");
@@ -703,15 +700,28 @@ export default function AdminPage() {
     toast.loading(`Uploading photo to gallery...`);
     try {
       const fileUrl = await uploadFileToStorage(file, "gallery");
-      setPhotosList([
-        {
-          id: Date.now().toString(),
-          src: fileUrl,
-          caption: file.name.split(".")[0] || "Device Upload",
-          category: photoCategoryInput,
-        },
-        ...photosList,
-      ]);
+      const newPhoto = {
+        id: Date.now().toString(),
+        src: fileUrl,
+        caption: file.name.split(".")[0] || "Device Upload",
+        category: photoCategoryInput,
+      };
+      const updated = [newPhoto, ...photosList];
+      setPhotosList(updated);
+
+      // Persist to DB immediately
+      try {
+        await fetch("/api/invitations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug: slugInput,
+            email: userEmail,
+            galleryJson: JSON.stringify(updated.map((p) => p.src)),
+          }),
+        });
+      } catch {}
+
       toast.dismiss();
       toast.success(`Uploaded ${file.name} to Masonry Gallery!`);
     } catch (err: any) {
@@ -721,11 +731,27 @@ export default function AdminPage() {
   };
 
   const handleDeletePhoto = async (id: string, src: string) => {
-    if (src.startsWith("/uploads/") || src.includes("amazonaws.com")) {
+    if (src.startsWith("/uploads/") || src.includes("amazonaws.com") || src.includes("r2.cloudflarestorage") || src.includes("r2.dev")) {
       await deleteFileFromStorage(src, "gallery");
     }
-    setPhotosList(photosList.filter((photo) => photo.id !== id));
-    toast.success("Photo removed from gallery!");
+    const updated = photosList.filter((photo) => photo.id !== id);
+    setPhotosList(updated);
+
+    // Persist deletion immediately to DB
+    try {
+      await fetch("/api/invitations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: slugInput,
+          email: userEmail,
+          galleryJson: JSON.stringify(updated.map((p) => p.src)),
+        }),
+      });
+      toast.success("Photo removed and gallery saved.");
+    } catch {
+      toast.success("Photo removed from gallery!");
+    }
   };
 
   const handleAiExtractDetails = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -972,12 +998,27 @@ export default function AdminPage() {
     toast.success("Invitation message & direct URL copied to clipboard!");
   };
 
-  const handleAddPhoto = (e: React.FormEvent) => {
+  const handleAddPhoto = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!photoSrcInput) return;
-    setPhotosList([{ id: Date.now().toString(), src: photoSrcInput, caption: photoCaptionInput || "Wedding Moment", category: photoCategoryInput }, ...photosList]);
+    const newPhoto = { id: Date.now().toString(), src: photoSrcInput, caption: photoCaptionInput || "Wedding Moment", category: photoCategoryInput };
+    const updated = [newPhoto, ...photosList];
+    setPhotosList(updated);
     setPhotoSrcInput("");
     setPhotoCaptionInput("");
+
+    // Persist to DB immediately
+    try {
+      await fetch("/api/invitations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: slugInput,
+          email: userEmail,
+          galleryJson: JSON.stringify(updated.map((p) => p.src)),
+        }),
+      });
+    } catch {}
     toast.success("Photo published to gallery!");
   };
 
@@ -2063,31 +2104,39 @@ export default function AdminPage() {
             </form>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-[#E8E2D9]">
-              {photosList.map((p) => (
-                <div key={p.id} className="relative aspect-4/3 rounded-xs overflow-hidden border border-[#E8E2D9] group">
-                  {p.src ? (
-                    <Image src={p.src} alt="Moment" fill className="object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-[#E8E2D9] flex items-center justify-center text-xs text-[#888178]">No image</div>
-                  )}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3 text-white">
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => handleDeletePhoto(p.id, p.src)}
-                        className="p-1 bg-red-600/80 hover:bg-red-700 text-white rounded-full text-xs font-bold transition-all shadow-md leading-none w-5 h-5 flex items-center justify-center"
-                        title="Delete Photo"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <div>
-                      <span className="text-[9px] uppercase tracking-widest text-amber-300 font-bold">{p.category}</span>
-                      <p className="font-serif text-xs leading-tight">{p.caption}</p>
+              {photosList.length === 0 ? (
+                <div className="col-span-3 py-16 flex flex-col items-center justify-center text-center space-y-3 text-[#C4B7A6]">
+                  <ImageIcon className="w-10 h-10 opacity-30" />
+                  <p className="text-sm font-serif">No photos yet</p>
+                  <p className="text-xs opacity-70">Upload from your device or add via URL above.<br/>Gallery will be hidden on the invite page until you add photos.</p>
+                </div>
+              ) : (
+                photosList.map((p) => (
+                  <div key={p.id} className="relative aspect-4/3 rounded-xs overflow-hidden border border-[#E8E2D9] group">
+                    {p.src ? (
+                      <Image src={p.src} alt="Moment" fill className="object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-[#E8E2D9] flex items-center justify-center text-xs text-[#888178]">No image</div>
+                    )}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-3 text-white">
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePhoto(p.id, p.src)}
+                          className="p-1 bg-red-600/80 hover:bg-red-700 text-white rounded-full text-xs font-bold transition-all shadow-md leading-none w-5 h-5 flex items-center justify-center"
+                          title="Delete Photo"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div>
+                        <span className="text-[9px] uppercase tracking-widest text-amber-300 font-bold">{p.category}</span>
+                        <p className="font-serif text-xs leading-tight">{p.caption}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
