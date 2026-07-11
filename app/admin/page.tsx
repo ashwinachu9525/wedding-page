@@ -320,12 +320,12 @@ export default function AdminPage() {
             // Hydrate structured story editor
             const parsedStory = parseStory(inv.story || "");
             if (typeof parsedStory === "object") {
-              setStoryData(parsedStory as StoryData);
+              // Spread DEFAULT_STORY_DATA first so new fields like withRegards default to ""
+              setStoryData({ ...DEFAULT_STORY_DATA, ...(parsedStory as StoryData) });
             } else {
               // Legacy plain text — put it in the quote field
               setStoryData({ ...DEFAULT_STORY_DATA, quote: parsedStory || DEFAULT_STORY_DATA.quote });
-            }
-            setInviteTheme(inv.theme || "velvet");
+            }            setInviteTheme(inv.theme || "velvet");
             if (inv.heroBgUrl) setHeroBgUrl(inv.heroBgUrl);
             if (inv.heroBgType) setHeroBgType(inv.heroBgType);
             if (inv.musicUrl !== undefined) setMusicUrl(inv.musicUrl || "");
@@ -587,7 +587,7 @@ export default function AdminPage() {
       // Hydrate structured story editor from preset
       const parsedPresetStory = parseStory(inv.story);
       if (typeof parsedPresetStory === "object") {
-        setStoryData(parsedPresetStory as StoryData);
+        setStoryData({ ...DEFAULT_STORY_DATA, ...(parsedPresetStory as StoryData) });
       } else {
         setStoryData({ ...DEFAULT_STORY_DATA, quote: parsedPresetStory || DEFAULT_STORY_DATA.quote });
       }
@@ -781,7 +781,7 @@ export default function AdminPage() {
           // If AI returns a plain text story, put it in the quote field
           const parsedExtracted = parseStory(extracted.story);
           if (typeof parsedExtracted === "object") {
-            setStoryData(parsedExtracted as StoryData);
+            setStoryData({ ...DEFAULT_STORY_DATA, ...(parsedExtracted as StoryData) });
           } else {
             setStoryData({ ...DEFAULT_STORY_DATA, quote: parsedExtracted });
           }
@@ -1497,6 +1497,23 @@ export default function AdminPage() {
                       value={storyData.ourPromise}
                       onChange={(e) => setStoryData({ ...storyData, ourPromise: e.target.value })}
                       placeholder="e.g. Together, we promise to support, respect, and cherish each other through every season of life."
+                      className="w-full bg-white border border-[#E8E2D9] px-3.5 py-2.5 text-xs rounded-xs resize-none focus:outline-none focus:border-[#9E8B73]"
+                    />
+                  </div>
+
+                  {/* With Regards */}
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#888178] mb-1">
+                      With Regards
+                      <span className="text-[#C4B7A6] normal-case font-normal ml-1">
+                        (closing note from the couple/families — leave blank to hide)
+                      </span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={storyData.withRegards}
+                      onChange={(e) => setStoryData({ ...storyData, withRegards: e.target.value })}
+                      placeholder={`e.g. With love and blessings,\nRahul & Anjali\nwith the Sharma & Mehta families`}
                       className="w-full bg-white border border-[#E8E2D9] px-3.5 py-2.5 text-xs rounded-xs resize-none focus:outline-none focus:border-[#9E8B73]"
                     />
                   </div>

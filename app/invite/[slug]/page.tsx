@@ -8,7 +8,7 @@ import { Sparkles, ArrowLeft, MessageCircle } from "lucide-react";
 
 import { Navbar } from "@/components/navbar/navbar";
 import { Hero } from "@/components/hero/hero";
-import { Story } from "@/components/story/story";
+import { Story, parseStory, type StoryData } from "@/components/story/story";
 import { EventSection } from "@/components/event/event";
 import { GallerySection } from "@/components/gallery/gallery";
 import { FooterSection } from "@/components/footer/footer";
@@ -161,6 +161,12 @@ function InviteLandingContent() {
     parsedFaqs = [];
   }
 
+  // Extract withRegards from structured story JSON
+  const parsedStory = parseStory(invite.story);
+  const withRegards = typeof parsedStory === "object"
+    ? (parsedStory as StoryData).withRegards?.trim() || ""
+    : "";
+
   return (
     <div className={`min-h-screen ${styles.bg} ${styles.text} overflow-x-hidden transition-colors duration-500`}>
       {/* SEO Structured Data */}
@@ -256,6 +262,7 @@ function InviteLandingContent() {
       <FooterSection
         coupleNames={invite.coupleNames}
         faqs={parsedFaqs.length > 0 ? parsedFaqs : undefined}
+        withRegards={withRegards || undefined}
         accentClass={styles.accent}
       />
 

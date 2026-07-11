@@ -11,6 +11,7 @@ export interface StoryData {
   specialMoment: string;
   thingsWeLove: string[];
   ourPromise: string;
+  withRegards: string;
 }
 
 export const STORY_QUOTES = [
@@ -34,6 +35,7 @@ export const DEFAULT_STORY_DATA: StoryData = {
   specialMoment: "",
   thingsWeLove: ["Kindness", "Sense of humor", "Supportive nature", "Caring personality"],
   ourPromise: "Together, we promise to support, respect, and cherish each other through every season of life.",
+  withRegards: "",
 };
 
 /** Parse story field — may be JSON (StoryData) or legacy plain string */
