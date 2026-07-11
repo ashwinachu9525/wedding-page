@@ -1,4 +1,5 @@
 import React from "react";
+import { getStoryDescription } from "@/components/story/story";
 
 interface WeddingJsonLdProps {
   coupleNames?: string;
@@ -13,8 +14,12 @@ export function WeddingJsonLd({
   weddingDate = "2026-11-21T10:30:00",
   venueName = "The Tamarind Tree & The Leela Palace",
   venueAddress = "Bangalore, Karnataka, India",
-  story = "The Royal Wedding Celebration of Rahul & Priya",
+  story = "",
 }: WeddingJsonLdProps) {
+  // Extract clean plain-text description — story may be JSON or legacy plain text
+  const description = getStoryDescription(story) ||
+    `Wedding Celebration of ${coupleNames} at ${venueName}`;
+
   const schemaData = {
     "@context": "https://schema.org",
     "@type": "SocialEvent",
@@ -28,7 +33,7 @@ export function WeddingJsonLd({
         addressLocality: venueAddress,
       },
     },
-    description: story,
+    description,
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     eventStatus: "https://schema.org/EventScheduled",
   };

@@ -44,10 +44,12 @@ import {
   Crown,
   Receipt,
   Zap,
+  BookOpen,
 } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { DeleteAccountDialog } from "@/components/ui/delete-account-dialog";
+import { type StoryData, DEFAULT_STORY_DATA, STORY_QUOTES, parseStory } from "@/components/story/story";
 
 type ThemeKey =
   | "alabaster"
@@ -205,6 +207,7 @@ export default function AdminPage() {
   const [venueAddress, setVenueAddress] = useState("Jaipur, Rajasthan, India • Partner Hotels: Taj Rambagh & Umaid Heritage");
   const [mapUrl, setMapUrl] = useState("https://maps.google.com/?q=Rambagh+Palace+Jaipur");
   const [story, setStory] = useState("From college best friends to soulful life partners, our journey is filled with laughter, adventures, and unconditional devotion.");
+  const [storyData, setStoryData] = useState<StoryData>({ ...DEFAULT_STORY_DATA });
   const [inviteTheme, setInviteTheme] = useState<ThemeKey>("velvet");
   const [previewKey, setPreviewKey] = useState(0);
 
@@ -314,6 +317,14 @@ export default function AdminPage() {
             setVenueAddress(inv.venueAddress || "");
             setMapUrl(inv.mapUrl || "");
             setStory(inv.story || "");
+            // Hydrate structured story editor
+            const parsedStory = parseStory(inv.story || "");
+            if (typeof parsedStory === "object") {
+              setStoryData(parsedStory as StoryData);
+            } else {
+              // Legacy plain text — put it in the quote field
+              setStoryData({ ...DEFAULT_STORY_DATA, quote: parsedStory || DEFAULT_STORY_DATA.quote });
+            }
             setInviteTheme(inv.theme || "velvet");
             if (inv.heroBgUrl) setHeroBgUrl(inv.heroBgUrl);
             if (inv.heroBgType) setHeroBgType(inv.heroBgType);
@@ -573,6 +584,13 @@ export default function AdminPage() {
       setVenueAddress(inv.venueAddress || "India");
       setMapUrl(inv.mapUrl || "https://maps.google.com");
       setStory(inv.story);
+      // Hydrate structured story editor from preset
+      const parsedPresetStory = parseStory(inv.story);
+      if (typeof parsedPresetStory === "object") {
+        setStoryData(parsedPresetStory as StoryData);
+      } else {
+        setStoryData({ ...DEFAULT_STORY_DATA, quote: parsedPresetStory || DEFAULT_STORY_DATA.quote });
+      }
       setInviteTheme((inv.theme as ThemeKey) || "velvet");
       if (inv.heroBgUrl) setHeroBgUrl(inv.heroBgUrl);
       if (inv.heroBgType) setHeroBgType(inv.heroBgType);
@@ -758,7 +776,16 @@ export default function AdminPage() {
         if (extracted.venueName) setVenueName(extracted.venueName);
         if (extracted.venueAddress) setVenueAddress(extracted.venueAddress);
         if (extracted.mapUrl) setMapUrl(extracted.mapUrl);
-        if (extracted.story) setStory(extracted.story);
+        if (extracted.story) {
+          setStory(extracted.story);
+          // If AI returns a plain text story, put it in the quote field
+          const parsedExtracted = parseStory(extracted.story);
+          if (typeof parsedExtracted === "object") {
+            setStoryData(parsedExtracted as StoryData);
+          } else {
+            setStoryData({ ...DEFAULT_STORY_DATA, quote: parsedExtracted });
+          }
+        }
 
         if (Array.isArray(extracted.faqs)) {
           setFaqList(extracted.faqs);
@@ -796,7 +823,7 @@ export default function AdminPage() {
       venueName,
       venueAddress,
       mapUrl,
-      story,
+      story: JSON.stringify(storyData),
       theme: inviteTheme,
       heroBgType,
       heroBgUrl,
@@ -1313,13 +1340,166 @@ export default function AdminPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#55514C] mb-1">Love Story Quote</label>
-                  <textarea
-                    rows={2}
-                    value={story}
-                    onChange={(e) => setStory(e.target.value)}
-                  />
+                <div className="space-y-4 bg-[#FAF8F5] p-4 rounded-xs border border-[#E8E2D9]">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-[#9E8B73]" />
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#55514C]">
+                      Our Story — Works for Love & Arranged Marriages
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-[#888178] leading-relaxed">
+                    All fields are optional. Fill only what applies. Neutral headings work for both love and arranged marriages.
+                  </p>
+
+                  {/* Opening Quote */}
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#888178] mb-1">
+                      Opening Quote <span className="text-[#C4B7A6] normal-case font-normal">(displayed as main quote)</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={storyData.quote}
+                      onChange={(e) => setStoryData({ ...storyData, quote: e.target.value })}
+                      placeholder="e.g. Every love story is beautiful, but ours is my favorite."
+                      className="w-full bg-white border border-[#E8E2D9] px-3.5 py-2.5 text-xs rounded-xs resize-none focus:outline-none focus:border-[#9E8B73]"
+                    />
+                    {/* Quick quote picker */}
+                    <div className="mt-2 space-y-1">
+                      <p className="text-[10px] text-[#888178] uppercase tracking-wider font-semibold">Or pick a quote:</p>
+                      <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                        {STORY_QUOTES.map((q, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setStoryData({ ...storyData, quote: q })}
+                            className={`text-[10px] px-2 py-1 rounded border transition-all text-left leading-relaxed ${
+                              storyData.quote === q
+                                ? "bg-[#22201E] text-white border-[#22201E]"
+                                : "bg-white text-[#55514C] border-[#E8E2D9] hover:border-[#9E8B73]"
+                            }`}
+                          >
+                            {q.length > 60 ? q.slice(0, 60) + "…" : q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* How We Met */}
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#888178] mb-1">
+                      How We Met
+                      <span className="text-[#C4B7A6] normal-case font-normal ml-1">
+                        (love marriage: friendship/college · arranged: families introduced us)
+                      </span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={storyData.howWeMet}
+                      onChange={(e) => setStoryData({ ...storyData, howWeMet: e.target.value })}
+                      placeholder="e.g. Our families introduced us, and with every conversation, we discovered a beautiful connection."
+                      className="w-full bg-white border border-[#E8E2D9] px-3.5 py-2.5 text-xs rounded-xs resize-none focus:outline-none focus:border-[#9E8B73]"
+                    />
+                  </div>
+
+                  {/* First Impression */}
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#888178] mb-1">
+                      The First Impression
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={storyData.firstImpression}
+                      onChange={(e) => setStoryData({ ...storyData, firstImpression: e.target.value })}
+                      placeholder="e.g. What was your first thought about each other?"
+                      className="w-full bg-white border border-[#E8E2D9] px-3.5 py-2.5 text-xs rounded-xs resize-none focus:outline-none focus:border-[#9E8B73]"
+                    />
+                  </div>
+
+                  {/* Our Journey Together */}
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#888178] mb-1">
+                      Our Journey Together
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={storyData.ourJourney}
+                      onChange={(e) => setStoryData({ ...storyData, ourJourney: e.target.value })}
+                      placeholder="e.g. Share memorable moments, milestones, and experiences."
+                      className="w-full bg-white border border-[#E8E2D9] px-3.5 py-2.5 text-xs rounded-xs resize-none focus:outline-none focus:border-[#9E8B73]"
+                    />
+                  </div>
+
+                  {/* The Special Moment */}
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#888178] mb-1">
+                      The Special Moment
+                      <span className="text-[#C4B7A6] normal-case font-normal ml-1">
+                        (proposal, engagement, or the moment you decided to spend your lives together)
+                      </span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={storyData.specialMoment}
+                      onChange={(e) => setStoryData({ ...storyData, specialMoment: e.target.value })}
+                      placeholder="e.g. The moment our families met, we knew this was the beginning of something beautiful."
+                      className="w-full bg-white border border-[#E8E2D9] px-3.5 py-2.5 text-xs rounded-xs resize-none focus:outline-none focus:border-[#9E8B73]"
+                    />
+                  </div>
+
+                  {/* Things We Love About Each Other */}
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#888178] mb-1.5">
+                      Things We Love About Each Other
+                      <span className="text-[#C4B7A6] normal-case font-normal ml-1">(one trait per line)</span>
+                    </label>
+                    <div className="space-y-1.5">
+                      {storyData.thingsWeLove.map((trait, i) => (
+                        <div key={i} className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            value={trait}
+                            onChange={(e) => {
+                              const updated = [...storyData.thingsWeLove];
+                              updated[i] = e.target.value;
+                              setStoryData({ ...storyData, thingsWeLove: updated });
+                            }}
+                            placeholder={`e.g. Kindness`}
+                            className="flex-1 bg-white border border-[#E8E2D9] px-3 py-1.5 text-xs rounded-xs focus:outline-none focus:border-[#9E8B73]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = storyData.thingsWeLove.filter((_, idx) => idx !== i);
+                              setStoryData({ ...storyData, thingsWeLove: updated });
+                            }}
+                            className="text-red-400 hover:text-red-600 text-xs font-bold px-1"
+                          >✕</button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setStoryData({ ...storyData, thingsWeLove: [...storyData.thingsWeLove, ""] })}
+                        className="text-[10px] text-[#9E8B73] hover:text-[#55514C] font-bold uppercase tracking-wider mt-1"
+                      >
+                        + Add trait
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Our Promise */}
+                  <div>
+                    <label className="block text-[10px] font-semibold uppercase tracking-wider text-[#888178] mb-1">
+                      Our Promise / Closing Message
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={storyData.ourPromise}
+                      onChange={(e) => setStoryData({ ...storyData, ourPromise: e.target.value })}
+                      placeholder="e.g. Together, we promise to support, respect, and cherish each other through every season of life."
+                      className="w-full bg-white border border-[#E8E2D9] px-3.5 py-2.5 text-xs rounded-xs resize-none focus:outline-none focus:border-[#9E8B73]"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-3 bg-[#FAF8F5] p-4 rounded-xs border border-[#E8E2D9]">

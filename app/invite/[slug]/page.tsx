@@ -134,12 +134,10 @@ function InviteLandingContent() {
 
   let parsedEvents: Array<{ name: string; time: string; venue: string; desc?: string }> = [];
   try {
-    parsedEvents = JSON.parse(invite.eventsJson);
+    const ev = JSON.parse(invite.eventsJson);
+    if (Array.isArray(ev)) parsedEvents = ev;
   } catch (e) {
-    parsedEvents = [
-      { name: "Muhurtham Ceremony", time: "Nov 21, 9:30 AM", venue: invite.venueName },
-      { name: "Grand Reception Gala", time: "Nov 22, 7:00 PM", venue: invite.venueName },
-    ];
+    parsedEvents = [];
   }
 
   let parsedGallery: string[] = [];

@@ -22,18 +22,20 @@ interface EventSectionProps {
 }
 
 export function EventSection({
-  events = [
-    { name: "Haldi & Mehendi", time: "Nov 20, 2026 16:00", venue: "Tamarind Tree Gardens", desc: "An afternoon of vibrant yellow hues, marigold blossoms, and soulful folk music." },
-    { name: "Muhurtham Ceremony", time: "Nov 21, 2026 09:30", venue: "Tamarind Tree Main Hall", desc: "The sacred royal tying of the Thali under traditional Vedic chants and Nadaswaram melodies." },
-    { name: "Grand Reception Gala", time: "Nov 22, 2026 19:00", venue: "The Leela Palace Ballroom", desc: "An enchanting black-tie evening of champagne toasts, live classical orchestra, and royal feast." },
-  ],
-  venueName = "The Tamarind Tree & The Leela Palace",
-  venueAddress = "Bangalore, Karnataka, India",
-  mapUrl = "https://maps.google.com/?q=The+Tamarind+Tree+Bangalore",
+  events = [],
+  venueName = "",
+  venueAddress = "",
+  mapUrl = "",
   onOpenRSVP,
   accentClass = "text-[#D4AF37]",
   buttonClass = "bg-[#22201E] text-white hover:bg-[#3A3632]",
 }: EventSectionProps) {
+
+  const hasEvents = events && events.length > 0;
+  const hasVenue = !!(venueName?.trim() || venueAddress?.trim());
+
+  // Hide entire section when there's nothing to show
+  if (!hasEvents && !hasVenue) return null;
 
   // 1-Click .ics Add to Calendar Generator
   const handleDownloadICS = (ev: EventItem) => {
@@ -92,7 +94,8 @@ export function EventSection({
           <p className="text-xs uppercase tracking-widest opacity-70">Featuring 1-Click Calendar Sync &amp; Venue Directions</p>
         </div>
 
-        {/* Events Grid */}
+        {/* Events Grid — only when events exist */}
+        {hasEvents && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {events.map((ev, idx) => (
             <div
@@ -128,16 +131,19 @@ export function EventSection({
             </div>
           ))}
         </div>
+        )}
 
-        {/* Accommodations & Directions Guide */}
+        {/* Accommodations & Directions Guide — only when venue info exists */}
+        {hasVenue && (
         <div className="p-8 sm:p-12 rounded-sm bg-current/5 border border-current/15 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
           <div className="space-y-2 max-w-xl">
             <span className={`text-[10px] uppercase tracking-[0.25em] font-bold ${accentClass}`}>Accommodations &amp; Venue Directions</span>
             <h3 className="font-serif text-2xl sm:text-3xl font-light">{venueName}</h3>
-            <p className="text-xs opacity-80">{venueAddress}</p>
+            {venueAddress && <p className="text-xs opacity-80">{venueAddress}</p>}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 shrink-0">
+            {mapUrl && (
             <a
               href={mapUrl}
               target="_blank"
@@ -147,6 +153,7 @@ export function EventSection({
               <MapPin className="w-4 h-4" />
               <span>Google Maps Navigation</span>
             </a>
+            )}
 
             <button
               onClick={onOpenRSVP}
@@ -157,6 +164,7 @@ export function EventSection({
             </button>
           </div>
         </div>
+        )}
       </div>
     </section>
   );
