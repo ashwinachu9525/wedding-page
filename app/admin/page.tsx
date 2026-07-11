@@ -215,6 +215,7 @@ export default function AdminPage() {
   const [inviteTheme, setInviteTheme] = useState<ThemeKey>("velvet");
   const [inviteFontStyle, setInviteFontStyle] = useState<string>("cormorant_bickham");
   const [previewKey, setPreviewKey] = useState(0);
+  const [viewCount, setViewCount] = useState<number>(0);
 
   const handleSelectTheme = (themeKey: ThemeKey) => {
     setInviteTheme(themeKey);
@@ -347,6 +348,7 @@ export default function AdminPage() {
               setStoryData({ ...DEFAULT_STORY_DATA, quote: parsedStory || DEFAULT_STORY_DATA.quote });
             }            setInviteTheme(inv.theme || "velvet");
             setInviteFontStyle(inv.fontStyle || "cormorant_bickham");
+            if (typeof inv.viewCount === "number") setViewCount(inv.viewCount);
             if (inv.heroBgUrl) setHeroBgUrl(inv.heroBgUrl);
             if (inv.heroBgType) setHeroBgType(inv.heroBgType);
             if (inv.musicUrl !== undefined) setMusicUrl(inv.musicUrl || "");
@@ -1153,7 +1155,14 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="bg-[#FAF8F5] border border-[#E8E2D9] px-3.5 py-1 rounded-full flex items-center gap-2 shadow-2xs">
+              <Eye className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span className="text-xs font-bold text-[#22201E]">Unique Visitors:</span>
+              <span className="text-xs font-mono font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                {viewCount}
+              </span>
+            </div>
             <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
               <span>Verified Owner</span>
@@ -2463,8 +2472,33 @@ export default function AdminPage() {
 
         {/* Tab 5: RSVPs */}
         {activeTab === "rsvps" && (
-          <div className="bg-white border border-[#E8E2D9] p-6 rounded-sm space-y-4">
-            <h2 className="font-serif text-2xl">Guest RSVP Responses</h2>
+          <div className="bg-white border border-[#E8E2D9] p-6 rounded-sm space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#E8E2D9] pb-4">
+              <div>
+                <h2 className="font-serif text-2xl text-[#22201E]">Guest RSVP Responses &amp; Analytics</h2>
+                <p className="text-xs text-[#888178]">Real-time visitor tracking and RSVP conversion analytics.</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="bg-[#FAF8F5] border border-[#E8E2D9] p-3 rounded-sm flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800">
+                    <Eye className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Unique Visitors</p>
+                    <p className="text-lg font-serif font-bold text-[#22201E]">{viewCount}</p>
+                  </div>
+                </div>
+                <div className="bg-[#FAF8F5] border border-[#E8E2D9] p-3 rounded-sm flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-800">
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Total RSVPs</p>
+                    <p className="text-lg font-serif font-bold text-[#22201E]">{rsvps.length}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-[#E8E2D9] uppercase text-[#888178]">

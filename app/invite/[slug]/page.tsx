@@ -98,6 +98,19 @@ function InviteLandingContent() {
         if (data && data.slug) {
           setInvite(data);
           setLoading(false);
+          // Track unique visitor view by IP asynchronously without incrementing on refresh
+          fetch("/api/invitations/track-view", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ slug: cleanSlug }),
+          })
+            .then((r) => r.json())
+            .then((trackData) => {
+              if (typeof trackData?.viewCount === "number") {
+                setInvite((prev) => (prev ? { ...prev, viewCount: trackData.viewCount } : prev));
+              }
+            })
+            .catch(() => {});
           return;
         }
       } catch (e) {}
@@ -106,6 +119,20 @@ function InviteLandingContent() {
       const fallback = getInvitationBySlug(cleanSlug) || getInvitationBySlug("rahul-priya-2026")!;
       setInvite(fallback);
       setLoading(false);
+
+      // Track fallback visit
+      fetch("/api/invitations/track-view", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: cleanSlug }),
+      })
+        .then((r) => r.json())
+        .then((trackData) => {
+          if (typeof trackData?.viewCount === "number") {
+            setInvite((prev) => (prev ? { ...prev, viewCount: trackData.viewCount } : prev));
+          }
+        })
+        .catch(() => {});
     }
     fetchInvite();
   }, [slug]);

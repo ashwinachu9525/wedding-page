@@ -20,6 +20,12 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { invitations: true } },
+        invitations: {
+          select: {
+            viewCount: true,
+            _count: { select: { rsvps: true } },
+          },
+        },
       },
     });
 
@@ -45,24 +51,29 @@ export async function GET(req: NextRequest) {
       console.warn("[super-admin/users] payments lookup failed:", e);
     }
 
-    const mapped = users.map((u) => ({
-      id: u.id,
-      name: u.name || u.email,
-      username: u.username || u.email?.split("@")[0],
-      email: u.email,
-      role: u.role,
-      status: u.status,
-      provider: u.provider,
-      invitationsCount: u._count.invitations,
-      joinedDate: u.createdAt
-        ? new Date(u.createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" })
-        : "—",
-      rsvpsCount: 0,
-      views: 0,
-      isDemo: false,
-      plan: proEmails.has(u.email!) ? "PRO" : "FREE",
-      subStatus: proEmails.has(u.email!) ? "ACTIVE" : "EXPIRED",
-    }));
+    const mapped = users.map((u) => {
+      const totalViews = u.invitations?.reduce((sum, inv) => sum + (inv.viewCount || 0), 0) || 0;
+      const totalRsvps = u.invitations?.reduce((sum, inv) => sum + (inv._count?.rsvps || 0), 0) || 0;
+
+      return {
+        id: u.id,
+        name: u.name || u.email,
+        username: u.username || u.email?.split("@")[0],
+        email: u.email,
+        role: u.role,
+        status: u.status,
+        provider: u.provider,
+        invitationsCount: u._count.invitations,
+        joinedDate: u.createdAt
+          ? new Date(u.createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" })
+          : "—",
+        rsvpsCount: totalRsvps,
+        views: totalViews,
+        isDemo: false,
+        plan: proEmails.has(u.email!) ? "PRO" : "FREE",
+        subStatus: proEmails.has(u.email!) ? "ACTIVE" : "EXPIRED",
+      };
+    });
 
     return NextResponse.json(mapped);
   } catch (err: any) {

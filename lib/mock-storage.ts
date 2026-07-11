@@ -223,3 +223,33 @@ export function saveOrUpdateInvitation(data: Partial<InvitationData> & { slug: s
     return newInv;
   }
 }
+
+const memoryVisitedIps = new Set<string>();
+
+export function trackUniqueVisit(slug: string, ip: string): { unique: boolean; viewCount: number } {
+  const inv = memoryInvitations.find((i) => i.slug.toLowerCase() === slug.toLowerCase());
+  if (!inv) return { unique: false, viewCount: 0 };
+
+  const key = `${inv.id}:${ip}`;
+  if (!memoryVisitedIps.has(key)) {
+    memoryVisitedIps.add(key);
+    inv.viewCount = (inv.viewCount || 0) + 1;
+    return { unique: true, viewCount: inv.viewCount };
+  }
+  return { unique: false, viewCount: inv.viewCount || 0 };
+}
+
+export function resetInvitationViews(slugOrId: string): void {
+  const inv = memoryInvitations.find(
+    (i) => i.slug.toLowerCase() === slugOrId.toLowerCase() || i.id === slugOrId
+  );
+  if (inv) {
+    inv.viewCount = 0;
+    // Clear IPs for this invitation
+    for (const key of memoryVisitedIps) {
+      if (key.startsWith(`${inv.id}:`)) {
+        memoryVisitedIps.delete(key);
+      }
+    }
+  }
+}

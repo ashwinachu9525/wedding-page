@@ -45,17 +45,28 @@ model Invitation {
   fontStyle     String       @default("cormorant_bickham") // font pairing ID from FONT_PAIRINGS
   musicUrl      String?
   isPublished   Boolean      @default(true)
-  viewCount     Int          @default(142)
-  eventsJson    String       @default("[{\"name\":\"Haldi & Mehendi\",\"time\":\"Nov 20, 4:00 PM\",\"venue\":\"Tamarind Tree Gardens\"},{\"name\":\"Muhurtham Ceremony\",\"time\":\"Nov 21, 9:30 AM\",\"venue\":\"Tamarind Tree Main Hall\"},{\"name\":\"Grand Reception Gala\",\"time\":\"Nov 22, 7:00 PM\",\"venue\":\"The Leela Palace Ballroom\"}]")
-  timelineJson  String?
-  faqJson       String?
-  galleryJson          String       @default("[\"https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=1974&auto=format&fit=crop\",\"https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1974&auto=format&fit=crop\",\"https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=2070&auto=format&fit=crop\"]")
-  enableAccommodations Boolean      @default(true)
-  accommodationsTitle  String?      @default("Accommodations & Venue Directions")
-  splitCoupleNames     Boolean      @default(false)
-  createdAt            DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  rsvps         Rsvp[]
+  viewCount            Int              @default(0)
+  eventsJson           String           @default("[{\"name\":\"Haldi & Mehendi\",\"time\":\"Nov 20, 4:00 PM\",\"venue\":\"Tamarind Tree Gardens\"},{\"name\":\"Muhurtham Ceremony\",\"time\":\"Nov 21, 9:30 AM\",\"venue\":\"Tamarind Tree Main Hall\"},{\"name\":\"Grand Reception Gala\",\"time\":\"Nov 22, 7:00 PM\",\"venue\":\"The Leela Palace Ballroom\"}]")
+  timelineJson         String?
+  faqJson              String?
+  galleryJson          String           @default("[\"https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=1974&auto=format&fit=crop\",\"https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1974&auto=format&fit=crop\",\"https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=2070&auto=format&fit=crop\"]")
+  enableAccommodations Boolean          @default(true)
+  accommodationsTitle  String?          @default("Accommodations & Venue Directions")
+  splitCoupleNames     Boolean          @default(false)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  rsvps                Rsvp[]
+  visits               InvitationVisit[]
+}
+
+model InvitationVisit {
+  id           String     @id @default(cuid())
+  invitationId String
+  invitation   Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  ipAddress    String
+  createdAt    DateTime   @default(now())
+
+  @@unique([invitationId, ipAddress])
 }
 
 model Rsvp {

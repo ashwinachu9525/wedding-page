@@ -30,6 +30,8 @@ import {
   Truck,
   Package,
   Clock,
+  RotateCcw,
+  Eye,
 } from "lucide-react";
 
 interface UserRecord {
@@ -316,6 +318,22 @@ export default function SuperAdminPage() {
     }
   };
 
+  const handleResetUserViews = async (id: string, username: string, name: string) => {
+    if (confirm(`Are you sure you want to reset unique visitor view count to 0 for "${name}" (/invite/${username})?`)) {
+      setUsersList((prev) => prev.map((u) => (u.id === id ? { ...u, views: 0 } : u)));
+      try {
+        await fetch("/api/super-admin/reset-views", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: id, username }),
+        });
+        toast.success(`Reset view count to 0 for "${name}".`);
+      } catch (e) {
+        toast.error("Failed to reset views on server.");
+      }
+    }
+  };
+
   const handleBroadcastBanner = (e: React.FormEvent) => {
     e.preventDefault();
     toast.success("Global Banner Broadcast updated across all client interfaces!");
@@ -574,6 +592,7 @@ export default function SuperAdminPage() {
                     <th className="py-3 px-4">Contact Email</th>
                     <th className="py-3 px-4">Auth Mode</th>
                     <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4">Unique Views</th>
                     <th className="py-3 px-4 text-right">Governance Actions</th>
                   </tr>
                 </thead>
@@ -600,8 +619,24 @@ export default function SuperAdminPage() {
                           {u.status}
                         </span>
                       </td>
+                      <td className="py-4 px-4 font-mono text-emerald-400 font-bold">
+                        <span className="bg-emerald-950/80 px-2.5 py-1 rounded-full border border-emerald-800/60 inline-flex items-center gap-1.5 text-xs">
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>{u.views || 0}</span>
+                        </span>
+                      </td>
                       <td className="py-4 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {/* Reset Views Button */}
+                          <button
+                            onClick={() => handleResetUserViews(u.id, u.username, u.name)}
+                            title="Reset Unique Visitor View Count to 0"
+                            className="px-2.5 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-xs text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors border border-gray-700"
+                          >
+                            <RotateCcw className="w-3 h-3 text-amber-400" />
+                            <span>Reset Views</span>
+                          </button>
+
                           {/* Suspend / Activate Toggle */}
                           <button
                             onClick={() => handleStatusToggle(u.id)}
