@@ -40,20 +40,31 @@ export function Navbar({
       audioRef.current.pause();
       setIsPlayingMusic(false);
     } else {
-      if (audioRef.current.readyState === 0) {
-        audioRef.current.load();
+      const audio = audioRef.current;
+      const attemptPlay = () => {
+        audio
+          .play()
+          .then(() => setIsPlayingMusic(true))
+          .catch((err: any) => {
+            console.warn("Audio playback error:", err);
+            if (err?.name === "NotAllowedError") {
+              toast.error("Please click anywhere on the page once to enable browser audio playback!");
+            } else {
+              toast.error("Could not load background track. Please verify the music selection in your Admin settings.");
+            }
+          });
+      };
+
+      if (audio.readyState === 0) {
+        const onCanPlay = () => {
+          audio.removeEventListener("canplay", onCanPlay);
+          attemptPlay();
+        };
+        audio.addEventListener("canplay", onCanPlay, { once: true });
+        audio.load();
+      } else {
+        attemptPlay();
       }
-      audioRef.current
-        .play()
-        .then(() => setIsPlayingMusic(true))
-        .catch((err: any) => {
-          console.warn("Audio playback error:", err);
-          if (err?.name === "NotAllowedError") {
-            toast.error("Browser Autoplay Check: Please click anywhere on the invitation page once first to enable audio playback!");
-          } else {
-            toast.error("Could not load background track. Please verify the music selection in your Admin settings.");
-          }
-        });
     }
   };
 
@@ -61,7 +72,7 @@ export function Navbar({
 
   return (
     <header className="sticky top-0 z-40 bg-current/5 backdrop-blur-md border-b border-current/10 px-4 sm:px-8 py-4 transition-colors duration-500">
-      {playableAudioUrl && <audio ref={audioRef} src={playableAudioUrl} loop />}
+      {playableAudioUrl && <audio ref={audioRef} src={playableAudioUrl} preload="auto" loop />}
 
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
         {/* Couple Names / Logo E.g. Single-line for top header */}

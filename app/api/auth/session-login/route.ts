@@ -3,6 +3,7 @@ import { getPrismaClient } from "../../../../lib/prisma";
 import { createSessionToken, SESSION_COOKIE, SessionPayload } from "../../../../lib/session";
 import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
+import { logEmail } from "@/lib/email-logger";
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -81,8 +82,10 @@ async function sendWelcomeEmail(email: string, name: string) {
       `,
     });
     console.log(`[Welcome Email] Sent to ${email}`);
+    logEmail({ to: email, subject: `🎉 Welcome to VivahaLuxe, ${displayName}!`, source: "welcome", status: "SUCCESS" });
   } catch (err) {
     console.warn("[Welcome Email] Failed:", err);
+    logEmail({ to: email, subject: `🎉 Welcome to VivahaLuxe, ${displayName}!`, source: "welcome", status: "FAILED", error: String(err) });
   }
 }
 

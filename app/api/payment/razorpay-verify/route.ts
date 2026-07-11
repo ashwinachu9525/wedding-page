@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import nodemailer from "nodemailer";
 import { getPrismaClient } from "@/lib/prisma";
+import { logEmail } from "@/lib/email-logger";
 
 export async function POST(req: Request) {
   try {
@@ -145,10 +146,11 @@ export async function POST(req: Request) {
 
         await transporter.sendMail({
           from: process.env.SMTP_FROM,
-          to: "support@vivahaluxe.com",
+          to: "ashwinachu9525@gmail.com",
           subject: `💎 Pro Subscription Payment Received: ${coupleNames} — ₹${amount} [${razorpay_payment_id || razorpay_order_id}]`,
           html: adminHtml,
         });
+        logEmail({ to: "ashwinachu9525@gmail.com", subject: `💎 Pro Subscription Payment Received: ${coupleNames} — ₹${amount}`, source: "payment", status: "SUCCESS" });
 
         if (userEmail?.includes("@")) {
           const userHtml = `
@@ -178,10 +180,12 @@ export async function POST(req: Request) {
             subject: `💎 Pro Subscription Active — VivahaLuxe [${razorpay_payment_id || razorpay_order_id}]`,
             html: userHtml,
           });
+          logEmail({ to: userEmail, subject: `💎 Pro Subscription Active — VivahaLuxe`, source: "payment", status: "SUCCESS" });
         }
       }
     } catch (emailErr) {
       console.warn("[Email Warning] Post-payment email send error:", emailErr);
+        logEmail({ to: userEmail || "ashwinachu9525@gmail.com", subject: "Pro Payment email notification", source: "payment", status: "FAILED", error: String(emailErr) });
     }
 
     return NextResponse.json({ success: true, paymentRecord });

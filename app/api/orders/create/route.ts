@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { logEmail } from "@/lib/email-logger";
 
 export async function POST(req: Request) {
   try {
@@ -10,7 +11,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Bulk print order quantity must be at least 100 cards." }, { status: 400 });
     }
 
-    const adminEmail = "support@vivahaluxe.com";
+    const adminEmail = "ashwinachu9525@gmail.com";
     let emailSent = false;
 
     try {
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
           },
         });
 
-        // 1. Send Notification to Admin Team (support@vivahaluxe.com)
+        // 1. Send Notification to Admin Team (ashwinachu9525@gmail.com)
         const adminHtml = `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #111827; color: #F9FAFB; border: 2px solid #10B981;">
             <h2 style="color: #10B981; margin-top: 0;">🖨️ New Bulk Print Order Placed!</h2>
@@ -55,6 +56,7 @@ export async function POST(req: Request) {
           subject: `🚨 Bulk Print Order Received [${orderId}]: ${coupleNames} (${quantity} cards)`,
           html: adminHtml,
         });
+        logEmail({ to: adminEmail, subject: `🚨 Bulk Print Order Received [${orderId}]: ${coupleNames} (${quantity} cards)`, source: "order", status: "SUCCESS" });
 
         // 2. Send Confirmation to User (if email provided)
         if (userEmail && userEmail.includes("@")) {
@@ -88,6 +90,7 @@ export async function POST(req: Request) {
             subject: `✨ Bulk Print Order Placed [${orderId}]: ${design}`,
             html: userHtml,
           });
+          logEmail({ to: userEmail, subject: `✨ Bulk Print Order Placed [${orderId}]: ${design}`, source: "order", status: "SUCCESS" });
         }
 
         emailSent = true;
@@ -97,6 +100,7 @@ export async function POST(req: Request) {
       }
     } catch (smtpErr) {
       console.warn("SMTP email dispatch warning:", smtpErr);
+        logEmail({ to: adminEmail, subject: "Bulk Print Order notification", source: "order", status: "FAILED", error: String(smtpErr) });
     }
 
     return NextResponse.json({

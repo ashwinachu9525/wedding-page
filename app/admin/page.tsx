@@ -544,7 +544,7 @@ export default function AdminPage() {
     const orderId = `ORD-${Math.floor(100000 + Math.random() * 900000)}`;
     const totalAmount = orderQuantity * selectedDesign.price;
 
-    const orderEmail = sessionUser?.email || "couple@vivahaluxe.com";
+    const orderEmail = sessionUser?.email || "ashwinachu9525@gmail.com";
     let userEmail = orderEmail;
 
     const newOrder = {
@@ -582,7 +582,7 @@ export default function AdminPage() {
       });
 
       toast.success("✨ Bulk Print Order Placed Successfully!", {
-        description: `Order ID ${orderId}. Alert dispatched to Admin Team (support@vivahaluxe.com).`,
+        description: `Order ID ${orderId}. Alert dispatched to Admin Team (ashwinachu9525@gmail.com).`,
       });
     } catch (err) {
       toast.success("✨ Bulk Print Order Placed!", {
@@ -2109,6 +2109,7 @@ export default function AdminPage() {
                           key={musicUrl || "no-track"}
                           src={getPlayableMediaUrl(musicUrl) || undefined}
                           controls
+                          preload="auto"
                           className="w-full"
                         />
                       </div>
@@ -2558,7 +2559,7 @@ export default function AdminPage() {
                 </div>
                 <h2 className="font-serif text-2xl sm:text-3xl text-[#22201E]">Order Physical Luxury Wedding Cards</h2>
                 <p className="text-xs text-[#55514C] mt-1 leading-relaxed">
-                  Select your physical card design and customize bulk quantities (minimum 100 units). Once requested, instant alerts are dispatched to our production team (<strong className="text-black">support@vivahaluxe.com</strong>) and your registered email.
+                  Select your physical card design and customize bulk quantities (minimum 100 units). Once requested, instant alerts are dispatched to our production team (<strong className="text-black">ashwinachu9525@gmail.com</strong>) and your registered email.
                 </p>
               </div>
 
@@ -3078,7 +3079,7 @@ export default function AdminPage() {
                   <p className="text-xs text-amber-800 mt-1 leading-relaxed">
                     Your upgrade request has been received. The Super Administrator will review your payment and activate your Pro status shortly. Once approved, all advertisements will be removed automatically.
                   </p>
-                  <p className="text-[11px] text-amber-700 mt-2 font-semibold">📧 Contact Support: support@vivahaluxe.com</p>
+                  <p className="text-[11px] text-amber-700 mt-2 font-semibold">📧 Contact Support: ashwinachu9525@gmail.com</p>
                 </div>
               </div>
             )}

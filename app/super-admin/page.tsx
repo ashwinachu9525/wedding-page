@@ -32,6 +32,8 @@ import {
   Clock,
   RotateCcw,
   Eye,
+  Mail,
+  RefreshCw,
 } from "lucide-react";
 
 interface UserRecord {
@@ -67,9 +69,11 @@ export default function SuperAdminPage() {
 
   const [usersList, setUsersList] = useState<UserRecord[]>(INITIAL_DEMO_USERS);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeDirectoryTab, setActiveDirectoryTab] = useState<"registered" | "demo" | "print-orders" | "pro-subscriptions">("registered");
+  const [activeDirectoryTab, setActiveDirectoryTab] = useState<"registered" | "demo" | "print-orders" | "pro-subscriptions" | "email-logs">("registered");
   const [announcement, setAnnouncement] = useState("🎉 VivahaLuxe v2.0 Live: 12 New Royal Themes & CockroachDB Prisma Storage Engine deployed!");
   const [printOrders, setPrintOrders] = useState<any[]>([]);
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
+  const [emailLogsLoading, setEmailLogsLoading] = useState(false);
 
   const [proTransactions, setProTransactions] = useState<any[]>([]);
   const [globalAdConfig, setGlobalAdConfig] = useState({
@@ -150,7 +154,31 @@ export default function SuperAdminPage() {
           if (txStr) setProTransactions(JSON.parse(txStr));
         } catch (e) {}
       });
+
+    // Load Email Logs from DB
+    setEmailLogsLoading(true);
+    fetch("/api/super-admin/email-logs")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setEmailLogs(data);
+      })
+      .catch(() => {})
+      .finally(() => setEmailLogsLoading(false));
   }, [isAuthenticated]);
+
+  const refreshEmailLogs = async () => {
+    setEmailLogsLoading(true);
+    try {
+      const r = await fetch("/api/super-admin/email-logs");
+      const data = await r.json();
+      if (Array.isArray(data)) setEmailLogs(data);
+      toast.success(`Refreshed — ${data.length} email logs loaded`);
+    } catch (e) {
+      toast.error("Failed to refresh email logs");
+    } finally {
+      setEmailLogsLoading(false);
+    }
+  };
 
   const handleToggleUserProPlan = async (userId: string) => {
     const target = usersList.find((u) => u.id === userId);
@@ -580,9 +608,105 @@ export default function SuperAdminPage() {
             >
               <span>💎 Pro Subscriptions &amp; Ad Management</span>
             </button>
+            <button
+              onClick={() => setActiveDirectoryTab("email-logs")}
+              className={`pb-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                activeDirectoryTab === "email-logs"
+                  ? "border-cyan-400 text-cyan-400"
+                  : "border-transparent text-gray-400 hover:text-white"
+              }`}
+            >
+              <Mail className="w-4 h-4" />
+              <span>📧 Email Logs ({emailLogs.length})</span>
+            </button>
           </div>
 
-          {activeDirectoryTab !== "print-orders" ? (
+          {activeDirectoryTab === "email-logs" ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-serif text-white">Outbound Email Delivery Logs</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Real-time tracking of every email sent from the platform — OTP, Welcome, Invitation, Order, and Payment notifications.</p>
+                </div>
+                <button
+                  onClick={refreshEmailLogs}
+                  disabled={emailLogsLoading}
+                  className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white text-xs uppercase tracking-widest rounded-xs font-bold flex items-center gap-1.5 transition-all shadow-md"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${emailLogsLoading ? "animate-spin" : ""}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+
+              {/* KPI Summary */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-gray-950 border border-gray-800 p-4 rounded-xs">
+                  <span className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold block">Total Sent</span>
+                  <p className="text-xl font-serif mt-1 text-cyan-400">{emailLogs.length}</p>
+                </div>
+                <div className="bg-gray-950 border border-gray-800 p-4 rounded-xs">
+                  <span className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold block">✅ Success</span>
+                  <p className="text-xl font-serif mt-1 text-emerald-400">{emailLogs.filter((l: any) => l.status === "SUCCESS").length}</p>
+                </div>
+                <div className="bg-gray-950 border border-gray-800 p-4 rounded-xs">
+                  <span className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold block">❌ Failed</span>
+                  <p className="text-xl font-serif mt-1 text-red-400">{emailLogs.filter((l: any) => l.status === "FAILED").length}</p>
+                </div>
+                <div className="bg-gray-950 border border-gray-800 p-4 rounded-xs">
+                  <span className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold block">Sources</span>
+                  <p className="text-xl font-serif mt-1 text-amber-400">{new Set(emailLogs.map((l: any) => l.source)).size}</p>
+                </div>
+              </div>
+
+              {emailLogsLoading ? (
+                <div className="text-center py-12 text-gray-500 text-sm">Loading email logs...</div>
+              ) : emailLogs.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 text-sm">No email logs recorded yet. Logs will appear here once emails are sent from the platform.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-800 text-gray-400 uppercase tracking-wider">
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3">Source</th>
+                        <th className="py-3 px-3">Recipient</th>
+                        <th className="py-3 px-3">Subject</th>
+                        <th className="py-3 px-3">Error</th>
+                        <th className="py-3 px-3">Timestamp (IST)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {emailLogs.map((log: any, idx: number) => (
+                        <tr key={log.id || idx} className="hover:bg-gray-800/40 transition-colors">
+                          <td className="py-3 px-3">
+                            {log.status === "SUCCESS" ? (
+                              <span className="bg-emerald-500/20 text-emerald-400 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">✅ Sent</span>
+                            ) : (
+                              <span className="bg-red-500/20 text-red-400 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">❌ Failed</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2 py-0.5 rounded-xs text-[10px] font-bold uppercase tracking-wider border ${
+                              log.source === "register" ? "bg-blue-500/10 text-blue-400 border-blue-500/30" :
+                              log.source === "welcome" ? "bg-purple-500/10 text-purple-400 border-purple-500/30" :
+                              log.source === "invitation" ? "bg-amber-500/10 text-amber-400 border-amber-500/30" :
+                              log.source === "order" ? "bg-orange-500/10 text-orange-400 border-orange-500/30" :
+                              log.source === "payment" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" :
+                              "bg-gray-500/10 text-gray-400 border-gray-500/30"
+                            }`}>{log.source}</span>
+                          </td>
+                          <td className="py-3 px-3 text-gray-300 font-mono text-[11px] max-w-[180px] truncate" title={log.to}>{log.to}</td>
+                          <td className="py-3 px-3 text-gray-300 max-w-[250px] truncate" title={log.subject}>{log.subject}</td>
+                          <td className="py-3 px-3 text-red-400 max-w-[200px] truncate text-[10px]" title={log.error || ""}>{log.error || "—"}</td>
+                          <td className="py-3 px-3 text-gray-500 text-[11px] whitespace-nowrap">{log.createdAt}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ) : activeDirectoryTab !== "print-orders" ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>

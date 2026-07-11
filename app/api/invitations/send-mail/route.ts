@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { logEmail } from "@/lib/email-logger";
 
 export async function POST(req: Request) {
   try {
@@ -65,11 +66,13 @@ export async function POST(req: Request) {
           html: htmlContent,
         });
         emailSent = true;
+        logEmail({ to: guestEmail, subject: `✨ Royal Wedding Invitation: ${coupleNames}`, source: "invitation", status: "SUCCESS" });
       } else {
         console.log("[SMTP Invite Notice] Simulated SMTP email sent to", guestEmail, "with URL:", inviteUrl);
       }
     } catch (smtpErr) {
       console.warn("SMTP email dispatch failed (check .env):", smtpErr);
+        logEmail({ to: guestEmail, subject: `✨ Royal Wedding Invitation: ${coupleNames}`, source: "invitation", status: "FAILED", error: String(smtpErr) });
     }
 
     return NextResponse.json({

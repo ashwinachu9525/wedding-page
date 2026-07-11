@@ -1,17 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   Sparkles,
-  Heart,
   Calendar,
-  Share2,
   ShieldCheck,
   MessageCircle,
-  ExternalLink,
   ArrowRight,
   Layers,
   Database,
@@ -21,6 +18,11 @@ import {
   Eye,
   Palette,
   MapPin,
+  Scan,
+  Type,
+  Trash2,
+  CheckCircle2,
+  Crown,
 } from "lucide-react";
 
 const DEMO_PRESETS = [
@@ -88,7 +90,7 @@ export default function VivahaLuxeHomepage() {
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-[#112A21] via-[#1A3A2F] to-[#112A21] text-white py-3 px-4 text-center text-xs sm:text-sm font-medium tracking-wide flex items-center justify-center gap-2 shadow-sm">
         <Sparkles className="w-4 h-4 text-[#D4AF37] shrink-0" />
-        <span>VivahaLuxe v2.0 Live: 4 Curated Preset Demos, Google Auth &amp; CockroachDB Prisma Engine Deployed!</span>
+        <span>VivahaLuxe v2.0 Live: AI Card Scanner, 18+ Custom Royal Fonts &amp; Safe PostgreSQL Storage!</span>
         <Link href="/support" className="underline font-bold text-[#D4AF37] ml-2 hidden sm:inline flex items-center gap-1">
           <span>Need Help? Chat +91 7012406453</span>
         </Link>
@@ -150,8 +152,123 @@ export default function VivahaLuxeHomepage() {
           </h1>
 
           <p className="text-base sm:text-lg text-[#66625D] max-w-2xl mx-auto leading-relaxed font-normal">
-            Generate dynamic SEO-friendly URLs (`/invite/your-names`), choose from 12 Indian luxury design themes, automate guest RSVPs, and share instant invitation cards via WhatsApp.
+            Generate dynamic SEO-friendly URLs (`/invite/your-names`), choose from 12 Indian luxury design themes, extract card details with AI, and share instant invitation cards via WhatsApp.
           </p>
+        </div>
+
+        {/* NEW ADVANCED FEATURES SHOWCASE: AI Scanner & Custom Typography */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left pt-6 border-t border-[#E8E2D9]">
+          {/* Feature 1: AI Card Scanner */}
+          <div className="bg-gradient-to-br from-[#1F1D1A] to-[#2B2723] text-white p-8 sm:p-10 rounded-sm shadow-xl border border-[#D4AF37]/30 flex flex-col justify-between space-y-6 relative overflow-hidden group">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-xs bg-[#D4AF37]/20 border border-[#D4AF37]/40 flex items-center justify-center text-[#D4AF37]">
+                  <Scan className="w-6 h-6" />
+                </div>
+                <span className="bg-[#D4AF37] text-[#1F1D1A] px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1">
+                  <Crown className="w-3 h-3" />
+                  <span>Pro AI Model</span>
+                </span>
+              </div>
+              <h3 className="font-serif text-2xl sm:text-3xl font-light text-[#FAF8F5]">
+                AI Wedding Card Extraction Scanner
+              </h3>
+              <p className="text-xs sm:text-sm text-[#C4B7A6] leading-relaxed">
+                Skip manual data entry completely! Simply upload a photo of your printed wedding invitation card or flyer. Our high-precision **Google Gemini Pro AI model** automatically analyzes the imagery and extracts Bride &amp; Groom names, exact muhurtham dates, venue addresses, and schedule details instantly into your digital invitation studio.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-[#D4AF37] font-semibold pt-2 border-t border-white/10">
+              <Sparkles className="w-4 h-4" />
+              <span>Right to use Pro AI models is reserved for paid users • Zero manual typing required</span>
+            </div>
+          </div>
+
+          {/* Feature 2: Custom Luxury Fonts & Typography Suite */}
+          <div className="bg-white p-8 sm:p-10 rounded-sm shadow-xl border border-[#E8E2D9] flex flex-col justify-between space-y-6 group hover:border-[#D4AF37] transition-all">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="w-12 h-12 rounded-xs bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-800">
+                  <Type className="w-6 h-6" />
+                </div>
+                <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                  Custom Typography Suite
+                </span>
+              </div>
+              <h3 className="font-serif text-2xl sm:text-3xl font-light text-[#22201E]">
+                18+ Curated Royal Google Fonts
+              </h3>
+              <p className="text-xs sm:text-sm text-[#66625D] leading-relaxed">
+                Elevate your invitation aesthetics with our tailored typography engine. Couples can seamlessly switch between world-class calligraphy, classic serif, and modern script typography styles—including **Bodoni Moda, Alex Brush, Cormorant Garamond, Cinzel, Great Vibes, Playfair Display, and WindSong**—ensuring every guest sees flawless royal typography.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2 border-t border-[#E8E2D9] text-xs font-serif italic text-[#55514C]">
+              <span className="text-base font-bold text-[#D4AF37]">Aa</span>
+              <span>&ldquo;Elegance is the only beauty that never fades.&rdquo; — Instant font switching</span>
+            </div>
+          </div>
+        </div>
+
+        {/* PROMINENT DATA PRIVACY & 100% ACCOUNT DELETION GUARANTEE BANNER */}
+        <div className="bg-gradient-to-r from-[#112A21] via-[#16382C] to-[#112A21] text-white p-8 sm:p-12 rounded-sm shadow-2xl border border-emerald-500/30 text-left space-y-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-emerald-400/20 pb-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.25em] text-[#4ade80] bg-emerald-950/80 px-3.5 py-1.5 rounded-full border border-emerald-500/40">
+                <ShieldCheck className="w-4 h-4" />
+                <span>Enterprise Data Sovereignty &amp; Trust Guarantee</span>
+              </div>
+              <h2 className="font-serif text-3xl sm:text-4xl font-light">
+                Your Privacy &amp; Data Security Come First
+              </h2>
+            </div>
+            <div className="flex flex-wrap gap-3 shrink-0">
+              <Link
+                href="/privacy"
+                className="bg-white/10 hover:bg-white/20 text-white border border-white/30 px-5 py-2.5 rounded-xs text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2"
+              >
+                <Lock className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span>Privacy Policy</span>
+              </Link>
+              <Link
+                href="/terms"
+                className="bg-white/10 hover:bg-white/20 text-white border border-white/30 px-5 py-2.5 rounded-xs text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#4ade80]" />
+                <span>Terms of Service</span>
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs sm:text-sm">
+            <div className="bg-emerald-950/60 p-5 rounded-xs border border-emerald-500/20 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-white text-sm uppercase tracking-wider">
+                <Lock className="w-4 h-4 text-[#D4AF37]" />
+                <span>1. Zero Data Selling Policy</span>
+              </div>
+              <p className="text-[#A3C1B4] leading-relaxed">
+                We are strictly **not using any user data to sell to customers, commercial partners, or advertisers**. Your guest contact lists, couple biographies, and RSVPs remain entirely private and unmonetized.
+              </p>
+            </div>
+
+            <div className="bg-emerald-950/60 p-5 rounded-xs border border-emerald-500/20 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-white text-sm uppercase tracking-wider">
+                <Database className="w-4 h-4 text-blue-400" />
+                <span>2. Safe PostgreSQL Storage</span>
+              </div>
+              <p className="text-[#A3C1B4] leading-relaxed">
+                All celebration schedules, authentication tokens, and user credentials are safely stored inside our encrypted, enterprise-grade **PostgreSQL / CockroachDB Serverless** database with continuous SSL security.
+              </p>
+            </div>
+
+            <div className="bg-emerald-950/60 p-5 rounded-xs border border-emerald-500/20 space-y-2">
+              <div className="flex items-center gap-2 font-bold text-white text-sm uppercase tracking-wider">
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                <span>3. 100% Account Deletion Right</span>
+              </div>
+              <p className="text-[#A3C1B4] leading-relaxed">
+                You retain complete sovereignty over your data lifecycle. **Users can delete their account whenever they want**, instantly and permanently wiping every trace of their personal information and photos from our database.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* 4 Interactive Demo Presets Showcase */}
@@ -224,44 +341,27 @@ export default function VivahaLuxeHomepage() {
           </div>
         </div>
 
-        {/* Quick Portal Access Grid */}
+        {/* Quick Portal Access Grid (SUPER ADMIN DETAILS COMPLETELY REMOVED) */}
         <div className="space-y-6 text-left pt-8 border-t border-[#E8E2D9]">
           <div className="text-center">
             <h2 className="font-serif text-2xl sm:text-3xl">Platform Command Gateways</h2>
             <p className="text-xs text-[#888178] uppercase tracking-widest mt-1">Instant Direct Navigation</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {/* Couple Dashboard */}
             <div className="bg-white p-6 sm:p-8 rounded-sm border border-[#E8E2D9] shadow-2xs space-y-4 hover:border-[#22201E] transition-all flex flex-col justify-between">
               <div className="space-y-2">
                 <div className="w-10 h-10 rounded-xs bg-emerald-900 text-white flex items-center justify-center">
                   <Layers className="w-5 h-5" />
                 </div>
-                <h3 className="font-serif text-xl font-bold">User Admin Dashboard</h3>
+                <h3 className="font-serif text-xl font-bold">Couple Studio Dashboard</h3>
                 <p className="text-xs text-[#66625D] leading-relaxed">
-                  Configure couple names, wedding dates, event schedules (Haldi, Mehendi, Muhurtham, Reception), custom map links, and select from 12 themes.
+                  Configure couple names, wedding dates, event schedules (Haldi, Mehendi, Muhurtham, Reception), custom map links, select from 12 themes, or run AI Card Scans.
                 </p>
               </div>
               <Link href="/admin" className="text-xs uppercase tracking-widest font-bold text-emerald-800 flex items-center gap-1.5 pt-4 hover:underline">
-                <span>Enter User Dashboard</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-
-            {/* Super Admin Panel */}
-            <div className="bg-white p-6 sm:p-8 rounded-sm border border-[#E8E2D9] shadow-2xs space-y-4 hover:border-[#22201E] transition-all flex flex-col justify-between">
-              <div className="space-y-2">
-                <div className="w-10 h-10 rounded-xs bg-purple-900 text-white flex items-center justify-center">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <h3 className="font-serif text-xl font-bold">Super Admin Governance</h3>
-                <p className="text-xs text-[#66625D] leading-relaxed">
-                  Complete platform governance: view total registered couples, oversee active invitations, delete/suspend accounts, and broadcast banners.
-                </p>
-              </div>
-              <Link href="/super-admin" className="text-xs uppercase tracking-widest font-bold text-purple-900 flex items-center gap-1.5 pt-4 hover:underline">
-                <span>Enter Super Admin Portal</span>
+                <span>Enter Studio Dashboard</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -274,7 +374,7 @@ export default function VivahaLuxeHomepage() {
                 </div>
                 <h3 className="font-serif text-xl font-bold">Help &amp; WhatsApp Support</h3>
                 <p className="text-xs text-[#66625D] leading-relaxed">
-                  Dedicated assistance center with interactive FAQ, support tickets, and direct 1-click WhatsApp concierge chat connected to phone **7012406453**.
+                  Dedicated assistance center with interactive FAQ, support tickets, and direct 1-click WhatsApp concierge chat connected to lead engineer **(+91 7012406453)**.
                 </p>
               </div>
               <Link href="/support" className="text-xs uppercase tracking-widest font-bold text-[#16783B] flex items-center gap-1.5 pt-4 hover:underline">
@@ -321,16 +421,24 @@ export default function VivahaLuxeHomepage() {
       {/* Footer */}
       <footer className="border-t border-[#E8E2D9] bg-white py-8 px-4 sm:px-8 text-center text-xs text-[#888178] space-y-4">
         <p className="uppercase tracking-[0.25em]">
-          &copy; {new Date().getFullYear()} <span className="font-semibold text-[#22201E]">VivahaLuxe</span> • Powered by Prisma &amp; CockroachDB Serverless
+          &copy; {new Date().getFullYear()} <span className="font-semibold text-[#22201E]">VivahaLuxe</span> • All Rights Reserved
         </p>
-        <div className="flex justify-center gap-6 text-xs">
-          <Link href="/auth/login" className="hover:text-[#22201E]">Sign In</Link>
-          <Link href="/auth/register" className="hover:text-[#22201E]">Register</Link>
-          <Link href="/admin" className="hover:text-[#22201E]">Dashboard</Link>
-          <Link href="/super-admin" className="hover:text-[#22201E]">Super Admin</Link>
-          <Link href="/support" className="text-emerald-700 font-semibold hover:underline">WhatsApp Support (+91 7012406453)</Link>
+        <div className="flex flex-wrap justify-center items-center gap-6 text-xs font-semibold">
+          <Link href="/auth/login" className="hover:text-[#22201E] transition-colors">Sign In</Link>
+          <Link href="/auth/register" className="hover:text-[#22201E] transition-colors">Register</Link>
+          <Link href="/admin" className="hover:text-[#22201E] transition-colors">Studio Dashboard</Link>
+          <Link href="/privacy" className="text-[#D4AF37] hover:underline transition-colors flex items-center gap-1">
+            <Lock className="w-3 h-3" />
+            <span>Privacy Policy</span>
+          </Link>
+          <Link href="/terms" className="text-emerald-800 hover:underline transition-colors flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            <span>Terms of Service</span>
+          </Link>
+          <Link href="/support" className="text-[#16783B] hover:underline transition-colors">WhatsApp Support (+91 7012406453)</Link>
         </div>
       </footer>
     </div>
   );
 }
+

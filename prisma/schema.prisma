@@ -110,3 +110,15 @@ model ProPayment {
 
   @@map("vivaha_pro_payments")
 }
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  source    String   // register, welcome, invitation, order, payment
+  status    String   // SUCCESS or FAILED
+  error     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("email_logs")
+}

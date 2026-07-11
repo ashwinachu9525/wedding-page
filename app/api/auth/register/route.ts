@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 import { getPrismaClient } from "@/lib/prisma";
 import { storeOtp } from "@/lib/otp-store";
+import { logEmail } from "@/lib/email-logger";
 
 export async function POST(req: Request) {
   try {
@@ -123,11 +124,13 @@ export async function POST(req: Request) {
           html: htmlContent,
         });
         emailSent = true;
+        logEmail({ to: cleanEmail, subject: `✨ Your VivahaLuxe Verification OTP: ${otpCode}`, source: "register", status: "SUCCESS" });
       } else {
         console.log(`[SMTP Dev] OTP for ${cleanEmail}: ${otpCode}`);
       }
     } catch (smtpErr) {
       console.warn("SMTP email dispatch failed:", smtpErr);
+        logEmail({ to: cleanEmail, subject: `✨ Your VivahaLuxe Verification OTP: ${otpCode}`, source: "register", status: "FAILED", error: String(smtpErr) });
     }
 
     return NextResponse.json({
