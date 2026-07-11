@@ -9,7 +9,7 @@ import { useSession } from "@/hooks/useSession";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, loading } = useSession();
+  const { user, loading, refresh } = useSession();
 
   const [coupleNames, setCoupleNames] = useState("");
   const [brideDetails, setBrideDetails] = useState("");
@@ -26,11 +26,11 @@ export default function OnboardingPage() {
       router.replace("/auth/login");
       return;
     }
-    if (user.onboarded && user.slug) {
+    if (user.onboarded && user.slug && !submitting) {
       // Already onboarded — skip to dashboard
       router.replace("/admin");
     }
-  }, [user, loading, router]);
+  }, [user, loading, submitting, router]);
 
   const generateSeoSlug = (names: string) => {
     if (!names.trim()) return "";
@@ -102,6 +102,10 @@ export default function OnboardingPage() {
           slug: generatedSlug,
         }),
       });
+
+      // Re-fetch the session so useSession reflects the updated onboarded state
+      // before navigating — prevents the /admin → /onboarding redirect loop.
+      await refresh();
 
       toast.success(`Celebration initialized! Live slug created: /invite/${generatedSlug}`);
       router.push("/admin");
