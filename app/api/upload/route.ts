@@ -3,6 +3,31 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client
 import { writeFileSync, mkdirSync, unlinkSync, existsSync } from "fs";
 import { join } from "path";
 
+// Clean Cloudflare R2 endpoint if it accidentally has a bucket path appended in env variables
+function getCleanS3Endpoint(rawEndpoint?: string): string | undefined {
+  if (!rawEndpoint) return undefined;
+  const clean = rawEndpoint.trim().replace(/\/$/, "");
+  if (clean.includes(".r2.cloudflarestorage.com")) {
+    return clean.split(".r2.cloudflarestorage.com")[0] + ".r2.cloudflarestorage.com";
+  }
+  return clean;
+}
+
+// Extract any bucket name that might have been embedded inside S3_ENDPOINT path
+function getEndpointBucketCandidate(rawEndpoint?: string): string | null {
+  if (!rawEndpoint) return null;
+  const clean = rawEndpoint.trim().replace(/\/$/, "");
+  if (clean.includes(".r2.cloudflarestorage.com/")) {
+    const parts = clean.split(".r2.cloudflarestorage.com/");
+    if (parts.length > 1 && parts[1]) {
+      return parts[1].split("/")[0].trim();
+    }
+  }
+  return null;
+}
+
+const cleanEndpoint = getCleanS3Endpoint(process.env.S3_ENDPOINT);
+
 // Initialize S3/R2 Client using S3_* variables
 const s3Client =
   process.env.S3_ACCESS_KEY_ID &&
@@ -10,7 +35,7 @@ const s3Client =
   process.env.S3_REGION
     ? new S3Client({
         region: process.env.S3_REGION,
-        endpoint: process.env.S3_ENDPOINT || undefined,
+        endpoint: cleanEndpoint || undefined,
         credentials: {
           accessKeyId: process.env.S3_ACCESS_KEY_ID,
           secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
@@ -18,7 +43,8 @@ const s3Client =
       })
     : null;
 
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || "";
+const PRIMARY_BUCKET = process.env.S3_BUCKET_NAME || "";
+const SECONDARY_BUCKET = getEndpointBucketCandidate(process.env.S3_ENDPOINT);
 const PUBLIC_URL_BASE = process.env.NEXT_PUBLIC_S3_PUBLIC_URL || "";
 
 export async function POST(req: NextRequest) {
@@ -37,37 +63,39 @@ export async function POST(req: NextRequest) {
     const fileExtension = file.name.split(".").pop();
     const uniqueFileName = `${folder}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExtension}`;
 
-    // 1. If S3 Client is configured, upload to S3/R2 bucket
-    if (s3Client && BUCKET_NAME) {
-      const uploadParams = {
-        Bucket: BUCKET_NAME,
-        Key: `${folder}/${uniqueFileName}`,
-        Body: buffer,
-        ContentType: file.type,
-      };
-      await s3Client.send(new PutObjectCommand(uploadParams));
+    // 1. If S3 Client is configured, try uploading to S3/R2 bucket with automatic bucket retry and local fallback
+    if (s3Client && (PRIMARY_BUCKET || SECONDARY_BUCKET)) {
+      const bucketsToTry = Array.from(new Set([PRIMARY_BUCKET, SECONDARY_BUCKET].filter(Boolean) as string[]));
 
-      // Construct file access URL
-      let fileUrl = "";
-      if (PUBLIC_URL_BASE) {
-        const cleanBase = PUBLIC_URL_BASE.trim().replace(/\/$/, "");
-        fileUrl = `${cleanBase}/${folder}/${uniqueFileName}`;
-      } else if (process.env.S3_ENDPOINT) {
-        const cleanEndpoint = process.env.S3_ENDPOINT.trim().replace(/\/$/, "");
-        if (cleanEndpoint.includes("r2.cloudflarestorage.com")) {
-          // Cloudflare R2 endpoints have the bucket in the path or subdomain
-          fileUrl = `${cleanEndpoint}/${folder}/${uniqueFileName}`;
-        } else {
-          fileUrl = `${cleanEndpoint}/${BUCKET_NAME}/${folder}/${uniqueFileName}`;
+      for (const targetBucket of bucketsToTry) {
+        try {
+          const uploadParams = {
+            Bucket: targetBucket,
+            Key: `${folder}/${uniqueFileName}`,
+            Body: buffer,
+            ContentType: file.type,
+          };
+          await s3Client.send(new PutObjectCommand(uploadParams));
+
+          // Construct file access URL
+          let fileUrl = "";
+          if (PUBLIC_URL_BASE) {
+            const cleanBase = PUBLIC_URL_BASE.trim().replace(/\/$/, "");
+            fileUrl = `${cleanBase}/${folder}/${uniqueFileName}`;
+          } else if (cleanEndpoint) {
+            fileUrl = `${cleanEndpoint}/${targetBucket}/${folder}/${uniqueFileName}`;
+          } else {
+            fileUrl = `https://${targetBucket}.s3.${process.env.S3_REGION}.amazonaws.com/${folder}/${uniqueFileName}`;
+          }
+
+          return NextResponse.json({ url: fileUrl, isS3: true, filename: uniqueFileName, bucket: targetBucket });
+        } catch (s3Err: any) {
+          console.warn(`[api/upload] S3 upload to bucket '${targetBucket}' failed (${s3Err.name || s3Err.Code || s3Err.message}). Trying next or falling back...`);
         }
-      } else {
-        fileUrl = `https://${BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${folder}/${uniqueFileName}`;
       }
-
-      return NextResponse.json({ url: fileUrl, isS3: true, filename: uniqueFileName });
     }
 
-    // 2. Fallback: Save file locally in public/uploads/ folder
+    // 2. Fallback: Save file locally in public/uploads/ folder if S3 failed or not available
     const uploadDir = join(process.cwd(), "public", "uploads", folder);
     if (!existsSync(uploadDir)) {
       mkdirSync(uploadDir, { recursive: true });
@@ -94,17 +122,24 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "No URL provided" }, { status: 400 });
     }
 
-    // 1. If it's an S3/R2 URL, delete from bucket
-    if (s3Client && BUCKET_NAME && (url.includes("amazonaws.com") || url.includes("cloudflarestorage.com") || (PUBLIC_URL_BASE && url.startsWith(PUBLIC_URL_BASE)))) {
+    // 1. If it's an S3/R2 URL, try deleting from bucket
+    if (s3Client && (PRIMARY_BUCKET || SECONDARY_BUCKET) && (url.includes("amazonaws.com") || url.includes("cloudflarestorage.com") || (PUBLIC_URL_BASE && url.startsWith(PUBLIC_URL_BASE)))) {
       const parts = url.split("/");
       const fileName = parts.pop();
       if (fileName) {
-        const deleteParams = {
-          Bucket: BUCKET_NAME,
-          Key: `${folder}/${fileName}`,
-        };
-        await s3Client.send(new DeleteObjectCommand(deleteParams));
-        return NextResponse.json({ success: true, message: "Deleted from S3/R2 storage" });
+        const bucketsToTry = Array.from(new Set([PRIMARY_BUCKET, SECONDARY_BUCKET].filter(Boolean) as string[]));
+        for (const targetBucket of bucketsToTry) {
+          try {
+            const deleteParams = {
+              Bucket: targetBucket,
+              Key: `${folder}/${fileName}`,
+            };
+            await s3Client.send(new DeleteObjectCommand(deleteParams));
+            return NextResponse.json({ success: true, message: "Deleted from S3/R2 storage" });
+          } catch (e) {
+            // Ignore delete errors and try next or continue
+          }
+        }
       }
     }
 
