@@ -19,12 +19,27 @@ export async function GET(req: Request) {
         // Check if owner has active PRO
         let isProUser = false;
         try {
-          const rows: any[] = await prisma.$queryRawUnsafe(
-            `SELECT 1 FROM vivaha_pro_payments WHERE user_email = $1 AND status = 'Approved & Active' LIMIT 1`,
-            invite.user?.email ?? ""
-          );
-          isProUser = rows.length > 0;
-        } catch (_) {}
+          if (invite.user?.email) {
+            // Ensure table exists before querying
+            await prisma.$executeRawUnsafe(`
+              CREATE TABLE IF NOT EXISTS vivaha_pro_payments (
+                id SERIAL PRIMARY KEY,
+                tx_id TEXT UNIQUE,
+                user_email TEXT,
+                status TEXT DEFAULT 'Approved & Active',
+                plan TEXT DEFAULT 'PRO',
+                created_at TIMESTAMPTZ DEFAULT NOW()
+              )
+            `);
+            const rows: any[] = await prisma.$queryRawUnsafe(
+              `SELECT tx_id FROM vivaha_pro_payments WHERE user_email = $1 AND status = 'Approved & Active' LIMIT 1`,
+              invite.user.email.trim().toLowerCase()
+            );
+            isProUser = Array.isArray(rows) && rows.length > 0;
+          }
+        } catch (proErr) {
+          console.warn("[isProUser check failed]", proErr);
+        }
 
         return NextResponse.json({ ...invite, isProUser });
       }
