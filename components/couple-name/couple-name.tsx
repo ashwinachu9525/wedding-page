@@ -26,21 +26,17 @@ export function CoupleNameDisplay({
     .replace(/\\n/g, "\n")
     .replace(/\r\n/g, "\n");
 
-  // 2. If splitAmpersand is enabled and there are no explicit \n breaks around &, auto-split at ampersand or 'and'
-  if (splitAmpersand && !normalized.includes("\n")) {
+  // 2. If splitAmpersand is enabled, ensure ampersand or 'and' is stacked on a separate line
+  if (splitAmpersand) {
     if (normalized.includes("&")) {
-      // Split "Sahal Hafneedh PK & Sahala P" into ["Sahal Hafneedh PK", "&", "Sahala P"]
       const parts = normalized.split("&").map(p => p.trim()).filter(Boolean);
-      if (parts.length === 2) {
-        normalized = `${parts[0]}\n&\n${parts[1]}`;
-      } else if (parts.length > 2) {
-        // If there are multiple ampersands or complex formats
+      if (parts.length >= 2) {
         normalized = parts.join("\n&\n");
       }
     } else if (/\band\b/i.test(normalized)) {
       const parts = normalized.split(/\band\b/i).map(p => p.trim()).filter(Boolean);
-      if (parts.length === 2) {
-        normalized = `${parts[0]}\n&\n${parts[1]}`;
+      if (parts.length >= 2) {
+        normalized = parts.join("\n&\n");
       }
     }
   }
