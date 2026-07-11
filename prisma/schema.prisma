@@ -43,6 +43,8 @@ model Invitation {
   story         String       @default("Two paths crossed under the Bangalore skies, blossoming into a lifelong bond of love, laughter, and heritage.")
   theme         String       @default("alabaster") // alabaster, velvet, emerald, rose, marigold, mysore, crimson, ivory, peacock, lotus, sandalwood, banarasi
   fontStyle     String       @default("cormorant_bickham") // font pairing ID from FONT_PAIRINGS
+  heroBgType    String       @default("image") // "image" or "video"
+  heroBgUrl     String?      // uploaded S3/R2 URL or external URL
   musicUrl      String?
   isPublished   Boolean      @default(true)
   viewCount            Int              @default(0)
