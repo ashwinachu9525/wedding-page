@@ -18,6 +18,8 @@ model User {
   provider      String       @default("credentials") // credentials or google
   image         String?
   emailVerified Boolean      @default(false)
+  otpHash       String?      // bcrypt hash of the pending verification OTP
+  otpExpiresAt  DateTime?    // expiry timestamp for the OTP
   firstLoginAt  DateTime?    // Set on first successful login — used to send welcome email once
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt

@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 import { getPrismaClient } from "@/lib/prisma";
 import { createSessionToken, SESSION_COOKIE } from "@/lib/session";
-
-// In-memory OTP store keyed by email (good enough for single-instance dev/prod)
-// For multi-instance production, use Redis or store OTP hash in the DB.
-const otpStore = new Map<string, { otp: string; expiresAt: number }>();
-
-/** Called by /api/auth/register to store the generated OTP server-side */
-export function storeOtp(email: string, otp: string) {
-  otpStore.set(email.toLowerCase(), {
-    otp,
-    expiresAt: Date.now() + 15 * 60 * 1000, // 15 minutes
-  });
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,50 +11,74 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const stored = otpStore.get(cleanEmail);
-
-    // Validate OTP
-    if (!stored) {
-      return NextResponse.json({ error: "No pending verification for this email. Please register again." }, { status: 400 });
-    }
-    if (Date.now() > stored.expiresAt) {
-      otpStore.delete(cleanEmail);
-      return NextResponse.json({ error: "OTP has expired. Please request a new code." }, { status: 400 });
-    }
-    if (otp.trim() !== stored.otp) {
-      return NextResponse.json({ error: "Invalid OTP code. Please check your email and try again." }, { status: 400 });
-    }
-
-    // OTP valid — clear it
-    otpStore.delete(cleanEmail);
-
-    // Mark user as email-verified in DB
     const prisma = getPrismaClient();
-    let sessionPayload: any = { email: cleanEmail, role: "USER", provider: "credentials", onboarded: false };
 
-    if (prisma) {
-      try {
-        const user = await prisma.user.update({
-          where: { email: cleanEmail },
-          data: { emailVerified: true },
-          include: {
-            invitations: { select: { slug: true }, take: 1 },
-          },
-        });
-        const firstInvite = user.invitations?.[0];
-        sessionPayload = {
-          id: user.id,
-          email: user.email!,
-          name: user.name || user.email!,
-          role: user.role,
-          provider: user.provider || "credentials",
-          slug: firstInvite?.slug || null,
-          onboarded: !!firstInvite,
-        };
-      } catch (dbErr) {
-        console.warn("[verify-otp] DB update failed:", dbErr);
-      }
+    if (!prisma) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 503 });
     }
+
+    // Load user and OTP fields from DB
+    const user = await prisma.user.findUnique({ where: { email: cleanEmail } });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "No account found for this email. Please register first." },
+        { status: 400 }
+      );
+    }
+
+    if (!user.otpHash || !user.otpExpiresAt) {
+      return NextResponse.json(
+        { error: "No pending verification found. Please request a new OTP." },
+        { status: 400 }
+      );
+    }
+
+    // Check expiry
+    if (new Date() > user.otpExpiresAt) {
+      // Clear expired OTP
+      await prisma.user.update({
+        where: { email: cleanEmail },
+        data: { otpHash: null, otpExpiresAt: null },
+      });
+      return NextResponse.json(
+        { error: "OTP has expired. Please click Resend to get a new code." },
+        { status: 400 }
+      );
+    }
+
+    // Verify OTP against stored hash
+    const isValid = await bcrypt.compare(otp.trim(), user.otpHash);
+    if (!isValid) {
+      return NextResponse.json(
+        { error: "Invalid OTP code. Please check your email and try again." },
+        { status: 400 }
+      );
+    }
+
+    // OTP valid — mark email verified and clear OTP fields
+    const updatedUser = await prisma.user.update({
+      where: { email: cleanEmail },
+      data: {
+        emailVerified: true,
+        otpHash: null,
+        otpExpiresAt: null,
+      },
+      include: {
+        invitations: { select: { slug: true }, take: 1 },
+      },
+    });
+
+    const firstInvite = updatedUser.invitations?.[0];
+    const sessionPayload = {
+      id: updatedUser.id,
+      email: updatedUser.email!,
+      name: updatedUser.name || updatedUser.email!,
+      role: updatedUser.role,
+      provider: updatedUser.provider || "credentials",
+      slug: firstInvite?.slug || null,
+      onboarded: !!firstInvite,
+    };
 
     // Issue session cookie
     const token = await createSessionToken(sessionPayload);

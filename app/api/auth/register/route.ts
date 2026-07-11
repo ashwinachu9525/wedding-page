@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 import { getPrismaClient } from "@/lib/prisma";
-import { storeOtp } from "@/app/api/auth/verify-otp/route";
+import { storeOtp } from "@/lib/otp-store";
 
 export async function POST(req: Request) {
   try {
@@ -29,6 +29,8 @@ export async function POST(req: Request) {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedOtp = await bcrypt.hash(otpCode, 8); // lower rounds — OTPs are short-lived
+        const otpExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
         // Derive a unique username
         let base = (username || cleanEmail.split("@")[0]).replace(/[^a-z0-9]/gi, "").toLowerCase() || "user";
@@ -43,7 +45,12 @@ export async function POST(req: Request) {
 
         await prisma.user.upsert({
           where: { email: cleanEmail },
-          update: { name: name || undefined, password: hashedPassword },
+          update: {
+            name: name || undefined,
+            password: hashedPassword,
+            otpHash: hashedOtp,
+            otpExpiresAt: otpExpiry,
+          },
           create: {
             email: cleanEmail,
             name: name || undefined,
@@ -51,10 +58,24 @@ export async function POST(req: Request) {
             username: existing?.username || finalUsername,
             provider: "credentials",
             emailVerified: false,
+            otpHash: hashedOtp,
+            otpExpiresAt: otpExpiry,
           },
         });
       } catch (dbErr) {
         console.warn("[Register] DB upsert failed:", dbErr);
+      }
+    } else if (prisma && !password) {
+      // Resend OTP — just update the OTP fields
+      try {
+        const hashedOtp = await bcrypt.hash(otpCode, 8);
+        const otpExpiry = new Date(Date.now() + 15 * 60 * 1000);
+        await prisma.user.update({
+          where: { email: cleanEmail },
+          data: { otpHash: hashedOtp, otpExpiresAt: otpExpiry },
+        });
+      } catch (dbErr) {
+        console.warn("[Register] OTP update failed:", dbErr);
       }
     }
 
