@@ -6,48 +6,62 @@ import { Music, VolumeX, Calendar, MapPin, Heart, Image as ImageIcon, Sparkles, 
 import { toast } from "sonner";
 import { formatHeadingText } from "@/lib/fonts";
 import { CoupleNameDisplay } from "@/components/couple-name/couple-name";
+import { getPlayableMediaUrl } from "@/lib/utils";
 
 interface NavbarProps {
+  names: string;
   coupleNames?: string;
   musicUrl?: string;
   onOpenRSVP: () => void;
   accentClass?: string;
   buttonClass?: string;
-  headingType?: "script" | "serif" | "modern";
+  headingType?: "classic" | "modern" | "script";
+  accentColor?: "gold" | "rose" | "emerald" | "royal" | "champagne";
   enableAccommodations?: boolean;
 }
 
 export function Navbar({
-  coupleNames = "Rahul Sharma & Priya Mehta",
+  names,
+  coupleNames = names,
   musicUrl = "",
   onOpenRSVP,
   accentClass = "text-[#D4AF37]",
   buttonClass = "bg-[#22201E] text-white hover:bg-[#3A3632]",
-  headingType,
+  headingType = "classic",
+  accentColor = "gold",
   enableAccommodations = true,
 }: NavbarProps) {
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const toggleAudio = () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || !musicUrl) return;
     if (isPlayingMusic) {
       audioRef.current.pause();
       setIsPlayingMusic(false);
     } else {
+      if (audioRef.current.readyState === 0) {
+        audioRef.current.load();
+      }
       audioRef.current
         .play()
         .then(() => setIsPlayingMusic(true))
-        .catch((err) => {
-          console.warn("Audio playback failed:", err);
-          toast.error("Playback failed! Please click anywhere on the page first to interact, or check if the audio URL is valid and accessible.");
+        .catch((err: any) => {
+          console.warn("Audio playback error:", err);
+          if (err?.name === "NotAllowedError") {
+            toast.error("Browser Autoplay Check: Please click anywhere on the invitation page once first to enable audio playback!");
+          } else {
+            toast.error("Could not load background track. Please verify the music selection in your Admin settings.");
+          }
         });
     }
   };
 
+  const playableAudioUrl = getPlayableMediaUrl(musicUrl);
+
   return (
     <header className="sticky top-0 z-40 bg-current/5 backdrop-blur-md border-b border-current/10 px-4 sm:px-8 py-4 transition-colors duration-500">
-      {musicUrl && <audio ref={audioRef} src={musicUrl} loop />}
+      {playableAudioUrl && <audio ref={audioRef} src={playableAudioUrl} loop />}
 
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
         {/* Couple Names / Logo E.g. Single-line for top header */}

@@ -33,6 +33,19 @@ export async function GET(req: NextRequest) {
       )
     `);
 
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE vivaha_pro_payments
+      ADD COLUMN IF NOT EXISTS couple_names TEXT,
+      ADD COLUMN IF NOT EXISTS razorpay_order_id TEXT,
+      ADD COLUMN IF NOT EXISTS razorpay_payment_id TEXT,
+      ADD COLUMN IF NOT EXISTS razorpay_signature TEXT,
+      ADD COLUMN IF NOT EXISTS amount INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'INR',
+      ADD COLUMN IF NOT EXISTS payment_method TEXT,
+      ADD COLUMN IF NOT EXISTS is_mock BOOLEAN DEFAULT FALSE,
+      ADD COLUMN IF NOT EXISTS granted_by_admin BOOLEAN DEFAULT FALSE
+    `);
+
     const rows: any[] = await prisma.$queryRawUnsafe(
       `SELECT * FROM vivaha_pro_payments WHERE user_email = $1 ORDER BY created_at DESC`,
       email.trim().toLowerCase()

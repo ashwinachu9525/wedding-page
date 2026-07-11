@@ -83,7 +83,12 @@ export async function POST(req: NextRequest) {
             const cleanBase = PUBLIC_URL_BASE.trim().replace(/\/$/, "");
             fileUrl = `${cleanBase}/${folder}/${uniqueFileName}`;
           } else if (cleanEndpoint) {
-            fileUrl = `${cleanEndpoint}/${targetBucket}/${folder}/${uniqueFileName}`;
+            const rawR2Url = `${cleanEndpoint}/${targetBucket}/${folder}/${uniqueFileName}`;
+            if (cleanEndpoint.includes(".r2.cloudflarestorage.com")) {
+              fileUrl = `/api/media?url=${encodeURIComponent(rawR2Url)}`;
+            } else {
+              fileUrl = rawR2Url;
+            }
           } else {
             fileUrl = `https://${targetBucket}.s3.${process.env.S3_REGION}.amazonaws.com/${folder}/${uniqueFileName}`;
           }

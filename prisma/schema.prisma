@@ -92,12 +92,21 @@ model SupportTicket {
 }
 
 model ProPayment {
-  id        Int       @id @default(autoincrement())
-  txId      String?   @unique @map("tx_id")
-  userEmail String?   @map("user_email")
-  status    String?   @default("Approved & Active")
-  plan      String?   @default("PRO")
-  createdAt DateTime? @default(now()) @map("created_at")
+  id                Int       @id @default(autoincrement())
+  txId              String?   @unique @map("tx_id")
+  razorpayOrderId   String?   @map("razorpay_order_id")
+  razorpayPaymentId String?   @map("razorpay_payment_id")
+  razorpaySignature String?   @map("razorpay_signature")
+  coupleNames       String?   @map("couple_names")
+  userEmail         String?   @map("user_email")
+  amount            Int?      @default(0)
+  currency          String?   @default("INR")
+  paymentMethod     String?   @map("payment_method")
+  status            String?   @default("Approved & Active")
+  plan              String?   @default("PRO")
+  isMock            Boolean?  @default(false) @map("is_mock")
+  grantedByAdmin    Boolean?  @default(false) @map("granted_by_admin")
+  createdAt         DateTime? @default(now()) @map("created_at")
 
   @@map("vivaha_pro_payments")
 }

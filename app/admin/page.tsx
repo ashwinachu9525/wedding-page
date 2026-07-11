@@ -51,6 +51,7 @@ import { useRazorpay } from "@/hooks/useRazorpay";
 import { DeleteAccountDialog } from "@/components/ui/delete-account-dialog";
 import { FontSelector } from "@/components/font-selector/font-selector";
 import { type StoryData, DEFAULT_STORY_DATA, STORY_QUOTES, parseStory } from "@/components/story/story";
+import { getPlayableMediaUrl } from "@/lib/utils";
 
 type ThemeKey =
   | "alabaster"
@@ -2068,7 +2069,7 @@ export default function AdminPage() {
                     </label>
                     <input
                       type="text"
-                      value={heroBgUrl.length > 80 ? heroBgUrl.substring(0, 80) + "..." : heroBgUrl}
+                      value={heroBgUrl}
                       onChange={(e) => setHeroBgUrl(e.target.value)}
                       placeholder="Direct URL or auto-filled from Device upload above"
                       className="w-full bg-white border border-[#E8E2D9] px-3 py-2 text-xs rounded-xs font-mono"
@@ -2086,17 +2087,37 @@ export default function AdminPage() {
                       </label>
                       <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-mono uppercase font-bold">MP3 Audio Test</span>
                     </div>
-                    <div className="p-4 bg-white border border-[#E8E2D9] rounded-xs shadow-xs space-y-3">
-                      <p className="text-xs text-[#66625D]">
-                        Test your celebration background music. When guests open your invitation portal, a gold floating vinyl player will play this track.
-                      </p>
-                      <audio
-                        key={musicUrl || "no-track"}
-                        src={musicUrl || undefined}
-                        controls
-                        className="w-full"
-                      />
-                    </div>
+                    {musicUrl ? (
+                      <div className="p-4 bg-white border border-[#E8E2D9] rounded-xs shadow-xs space-y-3">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <p className="text-xs text-[#66625D] flex-1">
+                            Test your celebration background music. When guests open your invitation portal, a floating player will play this track.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMusicUrl("");
+                              toast.success("Background music removed! Click 'Save Hero & Audio Settings' below to save.");
+                            }}
+                            className="shrink-0 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xs text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Remove Background Music
+                          </button>
+                        </div>
+                        <audio
+                          key={musicUrl || "no-track"}
+                          src={getPlayableMediaUrl(musicUrl) || undefined}
+                          controls
+                          className="w-full"
+                        />
+                      </div>
+                    ) : (
+                      <div className="p-6 bg-white border border-dashed border-[#D5CFC7] rounded-xs text-center space-y-2">
+                        <p className="text-xs font-semibold text-[#66625D]">No Background Music Currently Added</p>
+                        <p className="text-[11px] text-[#88837C]">Select a built-in library track below or upload an MP3 to add background music to your wedding portal.</p>
+                      </div>
+                    )}
                   </div>
                   <div className="pt-2 space-y-2">
                     <div>
@@ -2106,14 +2127,16 @@ export default function AdminPage() {
                       <select
                         value={musicUrl}
                         onChange={(e) => {
+                          setMusicUrl(e.target.value);
                           if (e.target.value) {
-                            setMusicUrl(e.target.value);
                             toast.success(`Selected audio track from library!`);
+                          } else {
+                            toast.info(`Removed background music selection.`);
                           }
                         }}
                         className="w-full bg-white border border-[#E8E2D9] px-3 py-2 text-xs rounded-xs font-semibold"
                       >
-                        <option value="">-- Choose Built-in Library Track --</option>
+                        <option value="">-- No Background Music / Remove --</option>
                         {BUILTIN_MUSIC_TRACKS.map((t, idx) => (
                           <option key={idx} value={t.url}>
                             {t.name}
@@ -2127,7 +2150,7 @@ export default function AdminPage() {
                       </label>
                       <input
                         type="text"
-                        value={musicUrl.length > 80 ? musicUrl.substring(0, 80) + "..." : musicUrl}
+                        value={musicUrl}
                         onChange={(e) => setMusicUrl(e.target.value)}
                         placeholder="Direct URL or auto-filled from Device MP3 upload above"
                         className="w-full bg-white border border-[#E8E2D9] px-3 py-2 text-xs rounded-xs font-mono"
