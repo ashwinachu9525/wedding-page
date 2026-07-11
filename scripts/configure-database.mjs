@@ -17,17 +17,32 @@ for (const arg of args) {
 
 // Fallback to env variable
 if (!provider) {
+  // 1. Check actual environment variables first (works on Vercel / CI)
+  if (process.env.DATABASE_PROVIDER) {
+    provider = process.env.DATABASE_PROVIDER.trim();
+  } else if (process.env.DATABASE_URL) {
+    const dbUrl = process.env.DATABASE_URL.trim();
+    if (dbUrl.startsWith('postgres://') || dbUrl.startsWith('postgresql://')) {
+      provider = 'postgresql';
+    } else if (dbUrl.startsWith('file:') || dbUrl.endsWith('.db')) {
+      provider = 'sqlite';
+    } else if (dbUrl.startsWith('libsql://')) {
+      provider = 'sqlite';
+    }
+  }
+}
+
+// 2. Fall back to reading .env.local (local dev only)
+if (!provider) {
   const envPath = path.join(__dirname, '../.env.local');
   if (fs.existsSync(envPath)) {
     const envContent = fs.readFileSync(envPath, 'utf8');
 
-    // 1. Check DATABASE_PROVIDER first (explicit override)
     const providerLine = envContent.split('\n').find(line => line.startsWith('DATABASE_PROVIDER='));
     if (providerLine) {
       provider = providerLine.split('=')[1].replace(/['"]/g, '').trim();
     }
 
-    // 2. Fall back to auto-detect from DATABASE_URL
     if (!provider) {
       const dbUrlLine = envContent.split('\n').find(line => line.startsWith('DATABASE_URL='));
       if (dbUrlLine) {
@@ -37,16 +52,17 @@ if (!provider) {
         } else if (dbUrl.startsWith('file:') || dbUrl.endsWith('.db')) {
           provider = 'sqlite';
         } else if (dbUrl.startsWith('libsql://')) {
-          provider = 'sqlite'; // Prisma uses sqlite provider for Turso/libsql
+          provider = 'sqlite';
         }
       }
     }
   }
 }
 
-// Default to sqlite if not found
+// Default to postgresql if not found — sqlite default was causing Vercel build corruption
 if (!provider) {
-  provider = 'sqlite';
+  provider = 'postgresql';
+  console.warn('[DB Configure] DATABASE_URL / DATABASE_PROVIDER not found — defaulting to postgresql. Set these env vars on Vercel.');
 }
 
 console.log(`[DB Configure] Target database provider: ${provider}`);
