@@ -1,12 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import bcrypt from "bcryptjs";
 import { getPrismaClient } from "@/lib/prisma";
 import { storeOtp } from "@/lib/otp-store";
 import { logEmail } from "@/lib/email-logger";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    const rateLimitError = enforceRateLimit(req, 10, 60000); // Max 10 per minute
+    if (rateLimitError) return rateLimitError;
+
     const body = await req.json();
     const { email, name, password, username } = body;
 

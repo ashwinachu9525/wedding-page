@@ -10,6 +10,7 @@ const COOKIE_OPTS = {
   sameSite: "lax" as const,
   path: "/",
   maxAge: 60 * 60 * 24 * 7, // 7 days
+  secure: process.env.NODE_ENV === "production",
 };
 
 function setCookieResponse(data: object, token: string, status = 200) {
@@ -89,10 +90,15 @@ async function sendWelcomeEmail(email: string, name: string) {
   }
 }
 
+import { enforceRateLimit } from "@/lib/rate-limit";
+
 // POST /api/auth/session-login
 // Body: { type: "credentials" | "google" | "demo" | "super-admin", email?, password?, idToken?, googleUser? }
 export async function POST(req: NextRequest) {
   try {
+    const rateLimitError = enforceRateLimit(req, 10, 60000); // Max 10 requests per minute
+    if (rateLimitError) return rateLimitError;
+
     const body = await req.json();
     const { type } = body;
 

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrismaClient } from "@/lib/prisma";
 import { getSessionFromRequest } from "@/lib/session";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
+    const rateLimitError = enforceRateLimit(req, 20, 60000); // Max 20 sends per minute per IP
+    if (rateLimitError) return rateLimitError;
+
     const session = await getSessionFromRequest(req);
     if (!session?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

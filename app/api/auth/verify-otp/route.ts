@@ -3,9 +3,13 @@ import bcrypt from "bcryptjs";
 import { getPrismaClient } from "@/lib/prisma";
 import { createSessionToken, SESSION_COOKIE } from "@/lib/session";
 import { verifyAndConsumeOtp } from "@/lib/otp-store";
+import { enforceRateLimit } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
+    const rateLimitError = enforceRateLimit(req, 10, 60000);
+    if (rateLimitError) return rateLimitError;
+
     const { email, otp } = await req.json();
     if (!email || !otp) {
       return NextResponse.json({ error: "Email and OTP are required" }, { status: 400 });
@@ -83,6 +87,7 @@ export async function POST(req: NextRequest) {
         sameSite: "lax",
         path: "/",
         maxAge: 60 * 60 * 24 * 7,
+        secure: process.env.NODE_ENV === "production",
       });
       return res;
     }
@@ -122,6 +127,7 @@ export async function POST(req: NextRequest) {
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
+      secure: process.env.NODE_ENV === "production",
     });
     return res;
   } catch (err) {
