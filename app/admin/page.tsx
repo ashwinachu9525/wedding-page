@@ -1181,8 +1181,8 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Display Advertisement banner only for Free plan users */}
-        {userPlan === "FREE" && <AdBanner slot="admin" className="my-2" />}
+        {/* Display Advertisement banner only for Free plan real users */}
+        {userPlan === "FREE" && !isDemoUser && <AdBanner slot="admin" className="my-2" />}
 
         {/* Tabs */}
         <div className="flex border-b border-[#E8E2D9] gap-4 overflow-x-auto">
