@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { MessageCircle, HelpCircle, Send, ArrowLeft, CheckCircle2, ShieldAlert, Sparkles, PhoneCall } from "lucide-react";
+import { MessageCircle, HelpCircle, Send, ArrowLeft, CheckCircle2, Sparkles, Video } from "lucide-react";
+import { HELP_TOPICS } from "@/lib/help-topics";
 
 export default function SupportPage() {
   const [name, setName] = useState("");
@@ -69,48 +70,42 @@ export default function SupportPage() {
 
         {/* FAQs */}
         <div className="space-y-6">
-          <h2 className="font-serif text-2xl border-b border-[#E8E2D9] pb-3">Frequently Asked Questions</h2>
+          <h2 className="font-serif text-2xl border-b border-[#E8E2D9] pb-3">Help Topics & Tutorials</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-sm border border-[#E8E2D9] shadow-2xs space-y-2">
-              <h3 className="font-semibold text-sm uppercase tracking-wider text-[#22201E] flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-emerald-700" />
-                <span>How do I create a dynamic invitation link?</span>
-              </h3>
-              <p className="text-xs text-[#55514C] leading-relaxed">
-                In your Admin Dashboard (`/admin`), go to the **WhatsApp Invite Studio** tab. You can specify custom couple names or guest names, pick one of 12 luxury card themes, and generate an SEO-friendly URL slug like `/invite/rahul-priya-2026`.
-              </p>
-            </div>
+            {HELP_TOPICS.map((topic) => (
+              <div key={topic.id} className="bg-white p-6 rounded-sm border border-[#E8E2D9] shadow-2xs flex flex-col justify-between">
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-sm uppercase tracking-wider text-[#22201E] flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <span>{topic.title}</span>
+                  </h3>
+                  <p className="text-xs text-[#55514C] leading-relaxed font-semibold">
+                    {topic.description}
+                  </p>
+                  <div className="text-xs text-[#55514C] leading-relaxed whitespace-pre-line border-t border-[#E8E2D9] pt-3">
+                    {topic.content}
+                  </div>
+                </div>
 
-            <div className="bg-white p-6 rounded-sm border border-[#E8E2D9] shadow-2xs space-y-2">
-              <h3 className="font-semibold text-sm uppercase tracking-wider text-[#22201E] flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-emerald-700" />
-                <span>Can I host my wedding site on a custom domain?</span>
-              </h3>
-              <p className="text-xs text-[#55514C] leading-relaxed">
-                Yes! When deployed on Vercel, simply enter your custom domain (e.g. `https://myroyalwedding.com`) in the domain configuration setting box. When you click send on WhatsApp, it automatically formats your exact live domain.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-sm border border-[#E8E2D9] shadow-2xs space-y-2">
-              <h3 className="font-semibold text-sm uppercase tracking-wider text-[#22201E] flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-emerald-700" />
-                <span>How does Prisma & CockroachDB storage work?</span>
-              </h3>
-              <p className="text-xs text-[#55514C] leading-relaxed">
-                Our application uses Prisma ORM configured for PostgreSQL / CockroachDB serverless storage. If your database connection is temporarily offline, our built-in high-availability fallback engine automatically stores your invitations locally!
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-sm border border-[#E8E2D9] shadow-2xs space-y-2">
-              <h3 className="font-semibold text-sm uppercase tracking-wider text-[#22201E] flex items-center gap-2">
-                <HelpCircle className="w-4 h-4 text-emerald-700" />
-                <span>What can Super Admins do?</span>
-              </h3>
-              <p className="text-xs text-[#55514C] leading-relaxed">
-                Super Admins can view platform-wide analytics, monitor all active couple invitations, manage user accounts, and oversee global themes in the dedicated `/super-admin` portal.
-              </p>
-            </div>
+                {topic.videoUrl && (
+                  <div className="mt-4 pt-4 border-t border-[#E8E2D9]">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600 mb-3">
+                      <Video className="w-4 h-4" />
+                      <span>Video Demo</span>
+                    </div>
+                    <div className="relative w-full overflow-hidden rounded-sm bg-gray-100" style={{ paddingBottom: "56.25%" }}>
+                      <iframe
+                        src={topic.videoUrl}
+                        className="absolute top-0 left-0 w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      ></iframe>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
 

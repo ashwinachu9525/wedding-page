@@ -62,6 +62,11 @@ const features = [
     description: "Enterprise Data Sovereignty: Zero data selling, secure PostgreSQL storage, and 100% account deletion capability.",
     icon: <ShieldCheck className="w-6 h-6 text-emerald-800" />,
   },
+  {
+    title: "WhatsApp API Gateway",
+    description: "Connect your WhatsApp via QR code and broadcast beautiful invitations instantly to all your guests with live read receipts.",
+    icon: <MessageCircle className="w-6 h-6 text-[#25D366]" />,
+  },
 ];
 
 export default function FeaturesPage() {
@@ -97,6 +102,12 @@ export default function FeaturesPage() {
               className="text-xs font-semibold uppercase tracking-wider text-emerald-800 px-3 py-2 transition-colors"
             >
               Features
+            </Link>
+            <Link
+              href="/pricing"
+              className="text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-emerald-800 px-3 py-2 transition-colors"
+            >
+              Pricing
             </Link>
             <Link
               href="/auth/login"

@@ -119,6 +119,12 @@ export default function VivahaLuxeHomepage() {
               Features
             </Link>
             <Link
+              href="/pricing"
+              className="text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-emerald-800 px-3 py-2 transition-colors"
+            >
+              Pricing
+            </Link>
+            <Link
               href="/auth/login"
               className="text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-[#22201E] px-3 py-2 transition-colors"
             >
@@ -158,7 +164,7 @@ export default function VivahaLuxeHomepage() {
           </h1>
 
           <p className="text-base sm:text-lg text-[#66625D] max-w-2xl mx-auto leading-relaxed font-normal">
-            Generate dynamic SEO-friendly URLs (`/invite/your-names`), choose from 12 Indian luxury design themes, extract card details with AI, and share instant invitation cards via WhatsApp.
+            Create stunning digital invitation cards, extract details instantly using AI, and seamlessly broadcast to all your guests via our advanced WhatsApp Gateway integration with real-time delivery tracking.
           </p>
           <div className="flex justify-center pt-4">
             <Link

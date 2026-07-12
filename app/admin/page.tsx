@@ -46,6 +46,10 @@ import {
   Zap,
   BookOpen,
   LayoutDashboard,
+  Smartphone,
+  QrCode,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
 import { useRazorpay } from "@/hooks/useRazorpay";
@@ -167,7 +171,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isDemoUser, setIsDemoUser] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "invites" | "hero" | "photos" | "card" | "rsvps" | "bulk-print" | "billing">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "invites" | "hero" | "photos" | "card" | "whatsapp" | "rsvps" | "bulk-print" | "billing">("dashboard");
   const [userPlan, setUserPlan] = useState<"FREE" | "PRO">("FREE");
   const [upgradingPro, setUpgradingPro] = useState(false);
   const [proTransactions, setProTransactions] = useState<any[]>([]);
@@ -461,6 +465,101 @@ export default function AdminPage() {
       setUserOrders(JSON.parse(ordStr));
     } catch (e) {}
   }, [sessionUser, sessionLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // WhatsApp Studio State
+  const [waStatus, setWaStatus] = useState<"LOADING" | "CONNECTED" | "QR_READY" | "DISCONNECTED">("LOADING");
+  const [waQr, setWaQr] = useState<string | null>(null);
+  const [waNumbers, setWaNumbers] = useState("");
+  const [waMessage, setWaMessage] = useState("");
+  const [waSending, setWaSending] = useState(false);
+  const [waLogs, setWaLogs] = useState<any[]>([]);
+  const [waLogsLoading, setWaLogsLoading] = useState(false);
+
+  // Auto-generate a default WhatsApp message when slugInput or user names change
+  useEffect(() => {
+    if (coupleNames && slugInput) {
+      setWaMessage(`Hello! We are thrilled to invite you to our wedding.\n\n${coupleNames}\n\nPlease view our full invitation and RSVP here:\nhttps://vivahaluxe.com/invite/${slugInput}`);
+    }
+  }, [coupleNames, slugInput]);
+
+  const checkWaStatus = async () => {
+    setWaStatus("LOADING");
+    try {
+      const res = await fetch("/api/whatsapp/session");
+      const data = await res.json();
+      if (data.status === "CONNECTED") {
+        setWaStatus("CONNECTED");
+        fetchWaLogs();
+      } else if (data.status === "QR_READY") {
+        setWaStatus("QR_READY");
+        setWaQr(data.qr);
+      } else {
+        setWaStatus("DISCONNECTED");
+      }
+    } catch (e) {
+      setWaStatus("DISCONNECTED");
+    }
+  };
+
+  const fetchWaLogs = async () => {
+    setWaLogsLoading(true);
+    try {
+      const res = await fetch("/api/whatsapp/logs");
+      const data = await res.json();
+      if (data.logs) {
+        setWaLogs(data.logs);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setWaLogsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "whatsapp") {
+      checkWaStatus();
+    }
+  }, [activeTab]);
+
+  const handleWaDisconnect = async () => {
+    setWaStatus("LOADING");
+    try {
+      await fetch("/api/whatsapp/session", { method: "DELETE" });
+      await checkWaStatus();
+    } catch (e) {
+      toast.error("Failed to disconnect WhatsApp");
+    }
+  };
+
+  const handleWaSend = async () => {
+    if (!waNumbers.trim()) return toast.error("Please enter at least one phone number");
+    if (!waMessage.trim()) return toast.error("Please enter a message");
+
+    const numbersList = waNumbers.split(",").map(n => n.trim()).filter(Boolean);
+    
+    setWaSending(true);
+    try {
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ numbers: numbersList, message: waMessage })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success(`Successfully sent ${data.sent} messages!`);
+        setWaNumbers(""); // clear input
+        fetchWaLogs(); // refresh logs
+      } else {
+        toast.error(data.error || "Failed to send messages");
+        fetchWaLogs(); // refresh logs even if failed
+      }
+    } catch (e) {
+      toast.error("An error occurred while sending");
+    }
+    setWaSending(false);
+  };
 
   // ── Effect 2: Load local-storage transactions once userEmail is known ────────
   useEffect(() => {
@@ -1222,8 +1321,18 @@ export default function AdminPage() {
               activeTab === "photos" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
             }`}
           >
-            <ImageIcon className="w-4 h-4" />
-            <span>Gallery Device Upload ({photosList.length})</span>
+            <ImageIcon className="w-4 h-4 text-blue-600" />
+            <span>Photo Gallery</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("whatsapp")}
+            className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+              activeTab === "whatsapp" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
+            }`}
+          >
+            <Smartphone className="w-4 h-4 text-green-600" />
+            <span>WhatsApp Studio</span>
           </button>
 
           <button
@@ -2566,6 +2675,176 @@ export default function AdminPage() {
                 );
               })()}
             </div>
+          </div>
+        )}
+
+        {/* Tab 5: WhatsApp Studio */}
+        {activeTab === "whatsapp" && (
+          <div className="bg-white border border-[#E8E2D9] p-6 rounded-sm space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#E8E2D9] pb-4">
+              <div>
+                <h2 className="font-serif text-2xl text-[#22201E]">WhatsApp Studio</h2>
+                <p className="text-xs text-[#888178]">Broadcast personalized invitations directly from your WhatsApp number.</p>
+              </div>
+              {userPlan !== "PRO" && (
+                <div className="bg-amber-50 text-amber-800 px-4 py-2 rounded-sm text-xs font-bold border border-amber-200 flex items-center gap-2">
+                  <Crown className="w-4 h-4" />
+                  PRO FEATURE
+                </div>
+              )}
+            </div>
+
+            {userPlan !== "PRO" ? (
+              <div className="text-center py-12 px-4">
+                <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Smartphone className="w-8 h-8" />
+                </div>
+                <h3 className="font-serif text-2xl text-[#22201E] mb-2">Automated WhatsApp Broadcasting</h3>
+                <p className="text-[#888178] max-w-lg mx-auto mb-6">
+                  Upgrade to Pro to link your own WhatsApp number and broadcast your personalized invitations directly to hundreds of guests with a single click. No more copying and pasting links!
+                </p>
+                <button
+                  onClick={() => setActiveTab("billing")}
+                  className="bg-[#D4AF37] hover:bg-[#E6C35C] text-black px-8 py-3 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-md hover:shadow-lg"
+                >
+                  Upgrade to Unlock
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                <div className="flex items-center justify-between bg-[#FAF8F5] p-4 border border-[#E8E2D9] rounded-sm">
+                  <div className="flex items-center gap-3">
+                    {waStatus === "CONNECTED" ? (
+                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                        <Wifi className="w-5 h-5" />
+                      </div>
+                    ) : waStatus === "LOADING" ? (
+                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 animate-pulse">
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600">
+                        <WifiOff className="w-5 h-5" />
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="font-bold text-sm">Connection Status</h3>
+                      <p className="text-xs text-[#888178]">
+                        {waStatus === "CONNECTED" ? "Linked & Ready" : waStatus === "LOADING" ? "Checking session..." : "Not Connected"}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    {waStatus === "CONNECTED" ? (
+                      <button onClick={handleWaDisconnect} className="text-xs text-red-600 font-bold uppercase tracking-wider hover:underline">
+                        Disconnect
+                      </button>
+                    ) : (
+                      <button onClick={checkWaStatus} className="text-xs text-blue-600 font-bold uppercase tracking-wider hover:underline flex items-center gap-1">
+                        <RefreshCw className="w-3 h-3" /> Refresh Status
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {waStatus === "QR_READY" && waQr && (
+                  <div className="text-center p-8 bg-white border border-[#E8E2D9] rounded-sm">
+                    <h3 className="font-serif text-xl mb-2">Scan to Link WhatsApp</h3>
+                    <p className="text-xs text-[#888178] mb-6">Open WhatsApp on your phone, go to Linked Devices, and scan this QR code.</p>
+                    <div className="inline-block p-4 bg-white border-2 border-gray-100 shadow-sm rounded-xl">
+                      <img src={waQr} alt="WhatsApp QR Code" className="w-64 h-64 object-contain" />
+                    </div>
+                  </div>
+                )}
+
+                {waStatus === "CONNECTED" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-[#888178] uppercase tracking-wider mb-2">
+                          Guest Phone Numbers
+                        </label>
+                        <p className="text-[10px] text-gray-500 mb-2">Enter numbers with country code, separated by commas (e.g. 919876543210, 918765432109).</p>
+                        <textarea
+                          value={waNumbers}
+                          onChange={(e) => setWaNumbers(e.target.value)}
+                          placeholder="919876543210, 918765432109..."
+                          className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-4 py-3 rounded-sm text-sm focus:outline-none focus:border-[#C4B7A6] min-h-[150px]"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-[#888178] uppercase tracking-wider mb-2">
+                          Message Template
+                        </label>
+                        <textarea
+                          value={waMessage}
+                          onChange={(e) => setWaMessage(e.target.value)}
+                          className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-4 py-3 rounded-sm text-sm focus:outline-none focus:border-[#C4B7A6] min-h-[150px]"
+                        />
+                      </div>
+                      <button
+                        onClick={handleWaSend}
+                        disabled={waSending}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-sm text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {waSending ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                        {waSending ? "Sending..." : "Send Broadcast"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {waStatus === "CONNECTED" && waLogs.length > 0 && (
+                  <div className="mt-8 border-t border-[#E8E2D9] pt-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-serif text-lg text-[#22201E]">Message Broadcast Logs</h3>
+                      <button onClick={fetchWaLogs} className="text-xs flex items-center gap-1 text-[#888178] hover:text-[#22201E]">
+                        <RefreshCw className={`w-3 h-3 ${waLogsLoading ? 'animate-spin' : ''}`} /> Refresh
+                      </button>
+                    </div>
+                    <div className="w-full overflow-x-auto">
+                      <table className="w-full text-left text-xs whitespace-nowrap">
+                        <thead>
+                          <tr className="border-b border-[#E8E2D9] uppercase text-[#888178]">
+                            <th className="py-2 px-2">Time</th>
+                            <th className="py-2 px-2">Recipient</th>
+                            <th className="py-2 px-2">Status</th>
+                            <th className="py-2 px-2">Error</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#E8E2D9]">
+                          {waLogs.map((log: any) => (
+                            <tr key={log.id}>
+                              <td className="py-2 px-2 text-gray-500">{new Date(log.createdAt).toLocaleString()}</td>
+                              <td className="py-2 px-2 font-medium">{log.recipient}</td>
+                              <td className="py-2 px-2">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  log.status === 'DELIVERED' || log.status === 'READ' || log.status === 'PLAYED' ? 'bg-green-100 text-green-800' :
+                                  log.status === 'SENT' ? 'bg-blue-100 text-blue-800' :
+                                  log.status === 'FAILED' ? 'bg-red-100 text-red-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {log.status}
+                                </span>
+                              </td>
+                              <td className="py-2 px-2 text-red-500 max-w-[200px] truncate" title={log.errorMessage || ""}>
+                                {log.errorMessage || "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

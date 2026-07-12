@@ -21,9 +21,24 @@ model User {
   otpHash       String?      // bcrypt hash of the pending verification OTP
   otpExpiresAt  DateTime?    // expiry timestamp for the OTP
   firstLoginAt  DateTime?    // Set on first successful login — used to send welcome email once
+  whatsappSessionId String?  // Stores the OpenWA session ID linked to this user
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   invitations   Invitation[]
+  whatsappLogs  WhatsappLog[]
+}
+
+model WhatsappLog {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipient    String
+  messageId    String?  // WAHA message ID
+  content      String
+  status       String   @default("PENDING") // PENDING, SENT, DELIVERED, READ, FAILED
+  errorMessage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Invitation {
@@ -123,4 +138,16 @@ model EmailLog {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("email_logs")
+}
+
+model SystemError {
+  id        String   @id @default(cuid())
+  message   String
+  stack     String?
+  path      String?
+  status    String   @default("OPEN") // OPEN, RESOLVED, DISMISSED
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_errors")
 }

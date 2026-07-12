@@ -69,11 +69,15 @@ export default function SuperAdminPage() {
 
   const [usersList, setUsersList] = useState<UserRecord[]>(INITIAL_DEMO_USERS);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeDirectoryTab, setActiveDirectoryTab] = useState<"registered" | "demo" | "print-orders" | "pro-subscriptions" | "email-logs">("registered");
+  const [activeDirectoryTab, setActiveDirectoryTab] = useState<"overview" | "registered" | "demo" | "print-orders" | "pro-subscriptions" | "email-logs" | "system-errors">("overview");
   const [announcement, setAnnouncement] = useState("🎉 VivahaLuxe v2.0 Live: 12 New Royal Themes & CockroachDB Prisma Storage Engine deployed!");
   const [printOrders, setPrintOrders] = useState<any[]>([]);
   const [emailLogs, setEmailLogs] = useState<any[]>([]);
   const [emailLogsLoading, setEmailLogsLoading] = useState(false);
+  const [systemErrors, setSystemErrors] = useState<any[]>([]);
+  const [systemErrorsLoading, setSystemErrorsLoading] = useState(false);
+  const [systemStats, setSystemStats] = useState<any>(null);
+  const [systemStatsLoading, setSystemStatsLoading] = useState(false);
 
   const [proTransactions, setProTransactions] = useState<any[]>([]);
   const [globalAdConfig, setGlobalAdConfig] = useState({
@@ -140,20 +144,14 @@ export default function SuperAdminPage() {
           setUsersList((prev) => [...dbUsers, ...prev.filter((p) => p.isDemo)]);
         }
       })
-      .catch(() => {});
+      .catch(console.error);
 
-    // Load Pro Transactions from DB
     fetch("/api/super-admin/transactions")
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setProTransactions(data);
       })
-      .catch(() => {
-        try {
-          const txStr = localStorage.getItem("vivaha_pro_transactions");
-          if (txStr) setProTransactions(JSON.parse(txStr));
-        } catch (e) {}
-      });
+      .catch(console.error);
 
     // Load Email Logs from DB
     setEmailLogsLoading(true);
@@ -164,7 +162,56 @@ export default function SuperAdminPage() {
       })
       .catch(() => {})
       .finally(() => setEmailLogsLoading(false));
+
+    refreshSystemErrors();
+    refreshSystemStats();
   }, [isAuthenticated]);
+
+  const refreshSystemStats = async () => {
+    setSystemStatsLoading(true);
+    try {
+      const res = await fetch("/api/super-admin/system-stats");
+      const data = await res.json();
+      if (!data.error) {
+        setSystemStats(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSystemStatsLoading(false);
+    }
+  };
+
+  const refreshSystemErrors = async () => {
+    setSystemErrorsLoading(true);
+    try {
+      const res = await fetch("/api/super-admin/system-errors");
+      const data = await res.json();
+      if (data.errors) {
+        setSystemErrors(data.errors);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSystemErrorsLoading(false);
+    }
+  };
+
+  const updateSystemErrorStatus = async (id: string, status: string) => {
+    try {
+      const res = await fetch(`/api/super-admin/system-errors/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        toast.success(`Error marked as ${status}`);
+        refreshSystemErrors();
+      }
+    } catch (e) {
+      toast.error("Failed to update status");
+    }
+  };
 
   const refreshEmailLogs = async () => {
     setEmailLogsLoading(true);
@@ -566,6 +613,17 @@ export default function SuperAdminPage() {
           {/* Directory Tabs */}
           <div className="flex border-b border-gray-800 gap-6 overflow-x-auto">
             <button
+              onClick={() => setActiveDirectoryTab("overview")}
+              className={`pb-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                activeDirectoryTab === "overview"
+                  ? "border-blue-400 text-blue-400"
+                  : "border-transparent text-gray-400 hover:text-white"
+              }`}
+            >
+              <Layout className="w-4 h-4" />
+              <span>Overview</span>
+            </button>
+            <button
               onClick={() => setActiveDirectoryTab("registered")}
               className={`pb-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
                 activeDirectoryTab === "registered"
@@ -619,9 +677,99 @@ export default function SuperAdminPage() {
               <Mail className="w-4 h-4" />
               <span>📧 Email Logs ({emailLogs.length})</span>
             </button>
+            <button
+              onClick={() => setActiveDirectoryTab("system-errors")}
+              className={`pb-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                activeDirectoryTab === "system-errors"
+                  ? "border-red-500 text-red-500"
+                  : "border-transparent text-gray-400 hover:text-white"
+              }`}
+            >
+              <AlertCircle className="w-4 h-4" />
+              <span>🚨 System Errors ({systemErrors.filter(e => e.status === "OPEN").length})</span>
+            </button>
           </div>
 
-          {activeDirectoryTab === "email-logs" ? (
+          {activeDirectoryTab === "overview" ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-serif text-white">System Overview</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">High-level metrics and system performance dashboard.</p>
+                </div>
+                <button
+                  onClick={refreshSystemStats}
+                  disabled={systemStatsLoading}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs uppercase tracking-widest rounded-xs font-bold flex items-center gap-1.5 transition-all shadow-md"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${systemStatsLoading ? "animate-spin" : ""}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-gray-950 border border-gray-800 p-5 rounded-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Total Real Users</span>
+                    <Users className="w-4 h-4 text-blue-400" />
+                  </div>
+                  <p className="text-2xl font-serif text-white">{usersList.filter((u) => !u.isDemo).length}</p>
+                </div>
+
+                <div className="bg-gray-950 border border-gray-800 p-5 rounded-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Total Profit (Pro)</span>
+                    <BarChart3 className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <p className="text-2xl font-serif text-white">₹{(usersList.filter((u) => !u.isDemo && u.plan === "PRO").length * 499).toLocaleString("en-IN")}</p>
+                </div>
+
+                <div className="bg-gray-950 border border-gray-800 p-5 rounded-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Unresolved Errors</span>
+                    <AlertCircle className="w-4 h-4 text-red-400" />
+                  </div>
+                  <p className="text-2xl font-serif text-white">{systemErrors.filter(e => e.status === "OPEN").length}</p>
+                </div>
+                
+                <div className="bg-gray-950 border border-gray-800 p-5 rounded-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold">Uptime</span>
+                    <Clock className="w-4 h-4 text-purple-400" />
+                  </div>
+                  <p className="text-2xl font-serif text-white">
+                    {systemStats?.uptime ? `${Math.floor(systemStats.uptime / 3600)}h ${Math.floor((systemStats.uptime % 3600) / 60)}m` : "—"}
+                  </p>
+                </div>
+              </div>
+
+              {systemStats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-950 border border-gray-800 p-5 rounded-sm">
+                    <h4 className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-4">CPU Utilization</h4>
+                    <div className="flex items-end gap-4">
+                      <div className="text-3xl font-serif text-white">{systemStats.cpu.percent}%</div>
+                      <div className="text-xs text-gray-500 pb-1">{systemStats.cpu.cores} Cores</div>
+                    </div>
+                    <div className="w-full bg-gray-800 h-2 mt-4 rounded-full overflow-hidden">
+                      <div className="bg-blue-500 h-full transition-all" style={{ width: `${systemStats.cpu.percent}%` }} />
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-950 border border-gray-800 p-5 rounded-sm">
+                    <h4 className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-4">Memory (RAM) Usage</h4>
+                    <div className="flex items-end gap-4">
+                      <div className="text-3xl font-serif text-white">{systemStats.memory.percent}%</div>
+                      <div className="text-xs text-gray-500 pb-1">{systemStats.memory.usedGB} GB / {systemStats.memory.totalGB} GB</div>
+                    </div>
+                    <div className="w-full bg-gray-800 h-2 mt-4 rounded-full overflow-hidden">
+                      <div className={`h-full transition-all ${systemStats.memory.percent > 80 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${systemStats.memory.percent}%` }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : activeDirectoryTab === "email-logs" ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -703,6 +851,84 @@ export default function SuperAdminPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </div>
+          ) : activeDirectoryTab === "system-errors" ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-serif text-white">Application Global Errors</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Real-time error boundary captures across the entire application.</p>
+                </div>
+                <button
+                  onClick={refreshSystemErrors}
+                  disabled={systemErrorsLoading}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs uppercase tracking-widest rounded-xs font-bold flex items-center gap-1.5 transition-all shadow-md"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${systemErrorsLoading ? "animate-spin" : ""}`} />
+                  <span>Refresh</span>
+                </button>
+              </div>
+
+              {systemErrorsLoading ? (
+                <div className="text-center py-12 text-gray-500 text-sm">Loading system errors...</div>
+              ) : systemErrors.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 text-sm">No errors found. Everything is running smoothly! 🎉</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {systemErrors.map((err) => (
+                    <div key={err.id} className="bg-gray-950 border border-gray-800 rounded-sm p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-3 mb-1">
+                            <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${
+                              err.status === "OPEN" ? "bg-red-500/20 text-red-400" :
+                              err.status === "RESOLVED" ? "bg-emerald-500/20 text-emerald-400" :
+                              "bg-gray-500/20 text-gray-400"
+                            }`}>
+                              {err.status}
+                            </span>
+                            <span className="text-gray-400 text-xs">Path: <span className="text-white font-mono">{err.path || "Global"}</span></span>
+                            <span className="text-gray-500 text-xs">{new Date(err.createdAt).toLocaleString()}</span>
+                          </div>
+                          <h4 className="text-red-400 font-bold text-sm">{err.message}</h4>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {err.status === "OPEN" && (
+                            <>
+                              <button onClick={() => updateSystemErrorStatus(err.id, "RESOLVED")} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] uppercase font-bold tracking-widest rounded-xs transition-colors">
+                                Resolve
+                              </button>
+                              <button onClick={() => updateSystemErrorStatus(err.id, "DISMISSED")} className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-[10px] uppercase font-bold tracking-widest rounded-xs transition-colors">
+                                Dismiss
+                              </button>
+                            </>
+                          )}
+                          <button onClick={async () => {
+                            if (!confirm("Delete this error log completely?")) return;
+                            try {
+                              const res = await fetch(`/api/super-admin/system-errors/${err.id}`, { method: "DELETE" });
+                              if (res.ok) {
+                                toast.success("Error deleted");
+                                refreshSystemErrors();
+                              }
+                            } catch (e) {
+                              toast.error("Failed to delete");
+                            }
+                          }} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {err.stack && (
+                        <div className="bg-[#1a1a1a] p-3 rounded text-[11px] font-mono text-gray-400 overflow-x-auto max-h-40 overflow-y-auto whitespace-pre-wrap border border-gray-800">
+                          {err.stack}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
