@@ -12,7 +12,7 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: "How to Connect WhatsApp",
     description: "Learn how to link your WhatsApp account to send automated invitations and receive RSVP alerts directly.",
     content: "1. Navigate to your Admin Dashboard (`/admin`).\n2. Click on the **WhatsApp Invite Studio** tab.\n3. Follow the instructions to scan the QR code using your WhatsApp Mobile App (Linked Devices).\n4. Once connected, your session will be marked as active and ready to broadcast messages.",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ" // Placeholder for demo
+     // Placeholder for demo
   },
   {
     id: "create-dynamic-link",
@@ -25,6 +25,13 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: "Can I host my wedding site on a custom domain?",
     description: "Instructions on linking a custom URL like myroyalwedding.com to your invitation.",
     content: "Yes! When deployed on Vercel, simply enter your custom domain in the platform's domain configuration setting box. When you click send on WhatsApp, it automatically formats your exact live domain."
+  },
+  {
+    id: "whatsapp-invite-tutorial",
+    title: "Create Custom WhatsApp Wedding Invites in Minutes with VivahaLuxe!",
+    description: "Welcome to VivahaLuxe! 💍 In this quick tutorial, we demonstrate how easy it is to create and send stunning, personalized digital wedding invitations to your guests directly via WhatsApp.Skip the manual typing and let our platform do the heavy lifting! Watch how you can effortlessly select royal themes, input guest details, and generate customized WhatsApp messages with unique, dynamic invitation links in just a few clicks.",
+    content: "Yes! When deployed on Vercel, simply enter your custom domain in the platform's domain configuration setting box. When you click send on WhatsApp, it automatically formats your exact live domain.",
+    videoUrl: "https://www.youtube.com/embed/sAAO1mIHzPI"
   },
   {
     id: "manage-rsvps",
