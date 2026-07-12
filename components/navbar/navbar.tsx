@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import Link from "next/link";
-import { Music, VolumeX, Calendar, MapPin, Heart, Image as ImageIcon, Sparkles, Send } from "lucide-react";
+import { Music, VolumeX, Calendar, MapPin, Heart, Image as ImageIcon, Sparkles, Send, Menu, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatHeadingText } from "@/lib/fonts";
 import { CoupleNameDisplay } from "@/components/couple-name/couple-name";
@@ -32,6 +32,7 @@ export function Navbar({
   enableAccommodations = true,
 }: NavbarProps) {
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const toggleAudio = () => {
@@ -111,10 +112,37 @@ export function Navbar({
             className={`px-4.5 py-2 sm:px-6 sm:py-2.5 rounded-xs text-xs uppercase tracking-widest font-bold shadow-md transition-transform active:scale-95 flex items-center gap-1.5 ${buttonClass}`}
           >
             <Send className="w-3.5 h-3.5" />
-            <span>RSVP Now</span>
+            <span className="hidden sm:inline">RSVP Now</span>
+            <span className="sm:hidden">RSVP</span>
+          </button>
+          
+          {/* Mobile Menu Toggle */}
+          <button 
+            className="md:hidden p-2 ml-1"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
       </div>
+      
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden absolute top-full left-0 right-0 border-b border-current/10 shadow-lg px-6 py-6 flex flex-col gap-6 text-sm uppercase tracking-[0.2em] font-bold z-50 backdrop-blur-xl" style={{ backgroundColor: 'inherit' }}>
+          <a href="#story" onClick={() => setIsMobileMenuOpen(false)} className="hover:opacity-80 transition-opacity flex items-center gap-2">
+            <Heart className="w-4 h-4 opacity-50" /> Our Story
+          </a>
+          <a href="#events" onClick={() => setIsMobileMenuOpen(false)} className="hover:opacity-80 transition-opacity flex items-center gap-2">
+            <Calendar className="w-4 h-4 opacity-50" /> Itinerary
+          </a>
+          <a href="#gallery" onClick={() => setIsMobileMenuOpen(false)} className="hover:opacity-80 transition-opacity flex items-center gap-2">
+            <ImageIcon className="w-4 h-4 opacity-50" /> Gallery
+          </a>
+          <a href="#faq" onClick={() => setIsMobileMenuOpen(false)} className="hover:opacity-80 transition-opacity flex items-center gap-2">
+            <MapPin className="w-4 h-4 opacity-50" /> {enableAccommodations !== false ? "Accommodations & FAQ" : "Directions & FAQ"}
+          </a>
+        </div>
+      )}
     </header>
   );
 }

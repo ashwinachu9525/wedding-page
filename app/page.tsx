@@ -113,6 +113,12 @@ export default function VivahaLuxeHomepage() {
 
           <div className="flex items-center gap-2 sm:gap-4">
             <Link
+              href="/features"
+              className="text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-emerald-800 px-3 py-2 transition-colors"
+            >
+              Features
+            </Link>
+            <Link
               href="/auth/login"
               className="text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-[#22201E] px-3 py-2 transition-colors"
             >
@@ -154,6 +160,15 @@ export default function VivahaLuxeHomepage() {
           <p className="text-base sm:text-lg text-[#66625D] max-w-2xl mx-auto leading-relaxed font-normal">
             Generate dynamic SEO-friendly URLs (`/invite/your-names`), choose from 12 Indian luxury design themes, extract card details with AI, and share instant invitation cards via WhatsApp.
           </p>
+          <div className="flex justify-center pt-4">
+            <Link
+              href="/features"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#FAF8F5] border border-[#C4B7A6] text-[#22201E] hover:border-[#D4AF37] hover:text-emerald-900 text-xs font-bold uppercase tracking-widest rounded-xs transition-all shadow-sm group"
+            >
+              <Sparkles className="w-4 h-4 text-[#D4AF37] group-hover:scale-110 transition-transform" />
+              <span>Explore All Platform Features</span>
+            </Link>
+          </div>
         </div>
 
         {/* NEW ADVANCED FEATURES SHOWCASE: AI Scanner & Custom Typography */}
@@ -424,6 +439,7 @@ export default function VivahaLuxeHomepage() {
           &copy; {new Date().getFullYear()} <span className="font-semibold text-[#22201E]">VivahaLuxe</span> • All Rights Reserved
         </p>
         <div className="flex flex-wrap justify-center items-center gap-6 text-xs font-semibold">
+          <Link href="/features" className="hover:text-[#22201E] transition-colors">Features</Link>
           <Link href="/auth/login" className="hover:text-[#22201E] transition-colors">Sign In</Link>
           <Link href="/auth/register" className="hover:text-[#22201E] transition-colors">Register</Link>
           <Link href="/admin" className="hover:text-[#22201E] transition-colors">Studio Dashboard</Link>

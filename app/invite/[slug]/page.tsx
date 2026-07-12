@@ -246,7 +246,7 @@ function InviteLandingContent() {
 
       {/* Personalized Greeting Card Block */}
       {guest && (
-        <div className={`w-full py-6 text-center flex flex-col items-center justify-center border-b border-current/10 px-4 ${
+        <div className={`w-full py-4 sm:py-6 text-center flex flex-col items-center justify-center border-b border-current/10 px-4 ${
           themeKey === "hindu_royal" ? "bg-[#FF9933]/10 text-[#FF9933]" :
           themeKey === "arabic_royal" ? "bg-[#E6C280]/15 text-[#E6C280]" :
           themeKey === "christian_royal" ? "bg-[#2B3E50]/5 text-[#2B3E50]" :

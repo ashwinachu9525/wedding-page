@@ -45,6 +45,7 @@ import {
   Receipt,
   Zap,
   BookOpen,
+  LayoutDashboard,
 } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
 import { useRazorpay } from "@/hooks/useRazorpay";
@@ -166,7 +167,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isDemoUser, setIsDemoUser] = useState(false);
-  const [activeTab, setActiveTab] = useState<"invites" | "hero" | "photos" | "card" | "rsvps" | "bulk-print" | "billing">("invites");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "invites" | "hero" | "photos" | "card" | "rsvps" | "bulk-print" | "billing">("dashboard");
   const [userPlan, setUserPlan] = useState<"FREE" | "PRO">("FREE");
   const [upgradingPro, setUpgradingPro] = useState(false);
   const [proTransactions, setProTransactions] = useState<any[]>([]);
@@ -1083,8 +1084,9 @@ export default function AdminPage() {
   return (
     <>
     <div className="min-h-screen bg-[#FAF8F5] text-[#22201E] py-8 sm:py-12 px-4 sm:px-8 md:px-12">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Support Alert Bar */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
+
+        {/* Tab 1: Invites & Full Profile Details */}
         <div className="bg-emerald-900 text-white px-5 py-3 rounded-sm flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
           <div className="flex items-center gap-2 text-xs">
             <MessageCircle className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -1185,6 +1187,16 @@ export default function AdminPage() {
         {/* Tabs */}
         <div className="flex border-b border-[#E8E2D9] gap-4 overflow-x-auto">
           <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+              activeTab === "dashboard" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4 text-blue-600" />
+            <span>Dashboard Overview</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("invites")}
             className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
               activeTab === "invites" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
@@ -1256,6 +1268,69 @@ export default function AdminPage() {
             <span>💎 Pro Plan &amp; Billing (₹499)</span>
           </button>
         </div>
+
+        {/* Tab 0: Dashboard Overview */}
+        {activeTab === "dashboard" && (
+          <div className="space-y-6 mt-6">
+            <div>
+              <h2 className="font-serif text-2xl sm:text-3xl text-[#22201E]">Dashboard Overview</h2>
+              <p className="text-xs text-[#888178] mt-1">A high-level summary of your invitation's performance and status.</p>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="bg-white border border-[#E8E2D9] p-5 rounded-sm shadow-sm flex flex-col items-center text-center">
+                <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-3">
+                  <Eye className="w-5 h-5" />
+                </div>
+                <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Total Unique Visitors</p>
+                <p className="text-3xl font-serif font-bold text-[#22201E] mt-1">{viewCount}</p>
+              </div>
+              
+              <div className="bg-white border border-[#E8E2D9] p-5 rounded-sm shadow-sm flex flex-col items-center text-center">
+                <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 mb-3">
+                  <Users className="w-5 h-5" />
+                </div>
+                <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Total RSVPs</p>
+                <p className="text-3xl font-serif font-bold text-[#22201E] mt-1">{rsvps.length}</p>
+              </div>
+              
+              <div className="bg-white border border-[#E8E2D9] p-5 rounded-sm shadow-sm flex flex-col items-center text-center">
+                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-3">
+                  <ImageIcon className="w-5 h-5" />
+                </div>
+                <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Gallery Photos</p>
+                <p className="text-3xl font-serif font-bold text-[#22201E] mt-1">{photosList.length}</p>
+              </div>
+
+              <div className="bg-white border border-[#E8E2D9] p-5 rounded-sm shadow-sm flex flex-col items-center text-center">
+                <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 mb-3">
+                  <Printer className="w-5 h-5" />
+                </div>
+                <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Print Orders</p>
+                <p className="text-3xl font-serif font-bold text-[#22201E] mt-1">{userOrders.length}</p>
+              </div>
+
+              <div className="bg-white border border-[#E8E2D9] p-5 rounded-sm shadow-sm flex flex-col items-center text-center">
+                <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 mb-3">
+                  <Crown className="w-5 h-5" />
+                </div>
+                <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Subscription Plan</p>
+                <p className="text-xl font-serif font-bold text-[#22201E] mt-2">{userPlan === "PRO" ? "PRO" : "FREE"}</p>
+              </div>
+            </div>
+            
+            {userPlan === "FREE" && (
+              <div className="bg-[#FAF8F5] border border-dashed border-amber-300 p-6 rounded-sm text-center">
+                <Crown className="w-8 h-8 text-amber-500 mx-auto mb-2 opacity-50" />
+                <h3 className="font-serif text-lg font-bold text-[#22201E]">Upgrade to Pro</h3>
+                <p className="text-xs text-[#55514C] mt-1 max-w-md mx-auto">Remove partner advertisements and get full premium access to all luxury templates. Visit the Billing tab to upgrade.</p>
+                <button onClick={() => setActiveTab("billing")} className="mt-4 px-6 py-2 bg-[#D4AF37] text-black text-xs font-bold uppercase tracking-widest rounded-xs">
+                  View Billing
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tab 1: Invites & Full Profile Details */}
         {activeTab === "invites" && (
@@ -2206,7 +2281,7 @@ export default function AdminPage() {
             </div>
 
             {/* URL Form fallback */}
-            <form onSubmit={handleAddPhoto} className="flex gap-3 max-w-2xl pt-2">
+            <form onSubmit={handleAddPhoto} className="flex flex-col sm:flex-row gap-3 max-w-2xl pt-2">
               <input
                 type="url"
                 required
@@ -2220,7 +2295,7 @@ export default function AdminPage() {
                 placeholder="Caption..."
                 value={photoCaptionInput}
                 onChange={(e) => setPhotoCaptionInput(e.target.value)}
-                className="w-36 bg-white border border-[#E8E2D9] px-3 py-2.5 text-xs rounded-xs"
+                className="w-full sm:w-36 bg-white border border-[#E8E2D9] px-3 py-2.5 text-xs rounded-xs"
               />
               <button type="submit" className="bg-[#D4AF37] text-black px-6 py-2.5 rounded-xs text-xs font-bold uppercase tracking-widest">
                 Add URL
@@ -2229,7 +2304,7 @@ export default function AdminPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-[#E8E2D9]">
               {photosList.length === 0 ? (
-                <div className="col-span-3 py-16 flex flex-col items-center justify-center text-center space-y-3 text-[#C4B7A6]">
+                <div className="col-span-1 sm:col-span-3 py-16 flex flex-col items-center justify-center text-center space-y-3 text-[#C4B7A6]">
                   <ImageIcon className="w-10 h-10 opacity-30" />
                   <p className="text-sm font-serif">No photos yet</p>
                   <p className="text-xs opacity-70">Upload from your device or add via URL above.<br/>Gallery will be hidden on the invite page until you add photos.</p>
@@ -2523,28 +2598,30 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#E8E2D9] uppercase text-[#888178]">
-                  <th className="py-3">Guest Name</th>
-                  <th className="py-3">Attending</th>
-                  <th className="py-3">Count</th>
-                  <th className="py-3">Dietary / Allergies</th>
-                  <th className="py-3">Song Request</th>
-                </tr>
-              </thead>
+            <div className="w-full overflow-x-auto">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr className="border-b border-[#E8E2D9] uppercase text-[#888178]">
+                    <th className="py-3 px-2">Guest Name</th>
+                    <th className="py-3 px-2">Attending</th>
+                    <th className="py-3 px-2">Count</th>
+                    <th className="py-3 px-2">Dietary / Allergies</th>
+                    <th className="py-3 px-2">Song Request</th>
+                  </tr>
+                </thead>
               <tbody className="divide-y divide-[#E8E2D9]">
                 {rsvps.map((r) => (
                   <tr key={r.id}>
-                    <td className="py-3 font-medium">{r.name}</td>
-                    <td className="py-3"><span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-bold">{r.attending}</span></td>
-                    <td className="py-3">{r.guests}</td>
-                    <td className="py-3">{r.dietary} ({r.allergies})</td>
-                    <td className="py-3 font-serif italic text-amber-700">{r.songRequest || "—"}</td>
+                    <td className="py-3 px-2 font-medium">{r.name}</td>
+                    <td className="py-3 px-2"><span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-bold">{r.attending}</span></td>
+                    <td className="py-3 px-2">{r.guests}</td>
+                    <td className="py-3 px-2">{r.dietary} ({r.allergies})</td>
+                    <td className="py-3 px-2 font-serif italic text-amber-700">{r.songRequest || "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 
@@ -3148,7 +3225,7 @@ export default function AdminPage() {
               </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
 
     {/* Delete Account Confirmation Dialog */}
