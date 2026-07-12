@@ -161,15 +161,18 @@ export async function GET(req: NextRequest) {
           const qrImage = qrData.image || qrData.qrCode || qrData.code;
           if (qrImage) {
             let base64 = qrImage;
-            let mimetype = "image/png";
-
             if (qrImage.startsWith("data:")) {
-               // already formed
                return NextResponse.json({ status: "QR_READY", qr: qrImage, sessionId });
             } else {
-               // construct data URL
                return NextResponse.json({ status: "QR_READY", qr: `data:image/png;base64,${base64}`, sessionId });
             }
+          }
+        } else {
+          const errText = await qrRes.text();
+          if (errText.includes("not active") || errText.includes("Start the session")) {
+            // Self-healing: WAHA thinks status is SCAN_QR_CODE but engine is not active. Force start.
+            await fetch(`${openWaUrl}/api/sessions/${sessionId}/start`, { method: "POST", headers, cache: "no-store" }).catch(() => {});
+            return NextResponse.json({ status: "LOADING", sessionId });
           }
         }
       } catch (e) {

@@ -101,6 +101,11 @@ export async function POST(req: NextRequest) {
         } else {
           const err = await res.text();
           
+          if (err.includes("not active") || err.includes("Start the session")) {
+            // Self-healing: try to start the session if it's inactive
+            await fetch(`${openWaUrl}/api/sessions/${safeSessionId}/start`, { method: "POST", headers }).catch(() => {});
+          }
+
           await prisma.whatsappLog.create({
             data: {
               userId: user.id,
