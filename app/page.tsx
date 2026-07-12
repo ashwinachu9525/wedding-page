@@ -125,6 +125,12 @@ export default function VivahaLuxeHomepage() {
               Pricing
             </Link>
             <Link
+              href="/support"
+              className="text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-emerald-800 px-3 py-2 transition-colors"
+            >
+              Support
+            </Link>
+            <Link
               href="/auth/login"
               className="text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-[#22201E] px-3 py-2 transition-colors"
             >

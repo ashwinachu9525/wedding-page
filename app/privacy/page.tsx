@@ -134,7 +134,27 @@ export default function PrivacyPolicyPage() {
 
           <section className="space-y-3">
             <h2 className="font-serif text-xl sm:text-2xl text-[#22201E] flex items-center gap-2 border-b border-[#FAF8F5] pb-2">
-              <span>5. Contact & Privacy Concerns</span>
+              <span>5. WhatsApp Connectivity & OpenWA Usage Risk</span>
+            </h2>
+            <p>
+              VivahaLuxe Pro users have the ability to link their own WhatsApp accounts to our broadcasting gateway (powered by WAHA/OpenWA) by scanning a QR code.
+            </p>
+            <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
+              <li>
+                <strong>Connect At Your Own Risk:</strong> By linking your personal or business WhatsApp number to VivahaLuxe, you acknowledge that you are using unofficial WhatsApp API gateways (OpenWA/WAHA). VivahaLuxe is not affiliated with Meta Platforms, Inc. or WhatsApp Inc.
+              </li>
+              <li>
+                <strong>Account Suspension Risk:</strong> Sending mass invitations rapidly, or violating WhatsApp's anti-spam terms of service, may result in your WhatsApp account being temporarily banned or permanently suspended by Meta. VivahaLuxe takes zero responsibility for any bans or suspensions incurred as a result of broadcasting invitations through our gateway.
+              </li>
+              <li>
+                <strong>Data Handling:</strong> We only use your active session to send the exact invitation texts you authorize. We do not read, store, or monitor your personal WhatsApp inbox conversations.
+              </li>
+            </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-serif text-xl sm:text-2xl text-[#22201E] flex items-center gap-2 border-b border-[#FAF8F5] pb-2">
+              <span>6. Contact & Privacy Concerns</span>
             </h2>
             <p>
               If you have any questions regarding how your Google OAuth information or celebration data is handled, please reach out to our dedicated Privacy & Platform Engineering team:
