@@ -111,43 +111,37 @@ export default function VivahaLuxeHomepage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
             <Link
               href="/features"
-              className="text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-emerald-800 px-3 py-2 transition-colors"
+              className="hidden md:block text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-emerald-800 px-2 py-2 transition-colors"
             >
               Features
             </Link>
             <Link
               href="/pricing"
-              className="text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-emerald-800 px-3 py-2 transition-colors"
+              className="hidden md:block text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-emerald-800 px-2 py-2 transition-colors"
             >
               Pricing
             </Link>
             <Link
-              href="/support"
-              className="text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-emerald-800 px-3 py-2 transition-colors"
-            >
-              Support
-            </Link>
-            <Link
               href="/auth/login"
-              className="text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-[#22201E] px-3 py-2 transition-colors"
+              className="text-xs font-semibold uppercase tracking-wider text-[#55514C] hover:text-[#22201E] px-2 py-2 transition-colors"
             >
               Sign In
             </Link>
 
             <Link
               href="/auth/register"
-              className="hidden sm:flex items-center gap-1.5 px-4 py-2.5 bg-[#22201E] text-white text-xs font-semibold uppercase tracking-widest rounded-xs hover:bg-[#3A3632] transition-colors shadow-xs"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-2 bg-[#22201E] text-white text-xs font-semibold uppercase tracking-widest rounded-xs hover:bg-[#3A3632] transition-colors shadow-xs"
             >
               <UserPlus className="w-3.5 h-3.5" />
-              <span>Register Free</span>
+              <span>Register</span>
             </Link>
 
             <Link
               href="/support"
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#25D366]/15 border border-[#25D366]/40 text-[#16783B] text-xs font-bold uppercase tracking-wider rounded-full hover:bg-[#25D366] hover:text-white transition-all"
+              className="flex items-center gap-1.5 px-2.5 py-2 bg-[#25D366]/15 border border-[#25D366]/40 text-[#16783B] text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-full hover:bg-[#25D366] hover:text-white transition-all"
             >
               <MessageCircle className="w-3.5 h-3.5" />
               <span className="hidden md:inline">Support</span>
