@@ -9,19 +9,19 @@ import { CoupleNameDisplay } from "@/components/couple-name/couple-name";
 import { getPlayableMediaUrl } from "@/lib/utils";
 
 interface NavbarProps {
-  names: string;
+  names?: string;
   coupleNames?: string;
   musicUrl?: string;
   onOpenRSVP: () => void;
   accentClass?: string;
   buttonClass?: string;
-  headingType?: "classic" | "modern" | "script";
+  headingType?: any;
   accentColor?: "gold" | "rose" | "emerald" | "royal" | "champagne";
   enableAccommodations?: boolean;
 }
 
 export function Navbar({
-  names,
+  names = "",
   coupleNames = names,
   musicUrl = "",
   onOpenRSVP,

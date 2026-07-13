@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrismaClient } from "@/lib/prisma";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const sessionCookie = req.cookies.get("vivaha_admin_session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     const prisma = getPrismaClient()!;
     const updated = await prisma.systemError.update({
-      where: { id: params.id },
+      where: { id },
       data: { status },
     });
 
@@ -38,8 +39,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const sessionCookie = req.cookies.get("vivaha_admin_session")?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -58,7 +60,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
     const prisma = getPrismaClient()!;
     await prisma.systemError.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ success: true });

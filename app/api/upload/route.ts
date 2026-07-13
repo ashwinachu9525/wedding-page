@@ -93,6 +93,10 @@ export async function POST(req: NextRequest) {
             fileUrl = `https://${targetBucket}.s3.${process.env.S3_REGION}.amazonaws.com/${folder}/${uniqueFileName}`;
           }
 
+          if (fileUrl.startsWith("/")) {
+            fileUrl = `${req.nextUrl?.origin || "http://localhost:3000"}${fileUrl}`;
+          }
+
           return NextResponse.json({ url: fileUrl, isS3: true, filename: uniqueFileName, bucket: targetBucket });
         } catch (s3Err: any) {
           console.warn(`[api/upload] S3 upload to bucket '${targetBucket}' failed (${s3Err.name || s3Err.Code || s3Err.message}). Trying next or falling back...`);
@@ -109,7 +113,10 @@ export async function POST(req: NextRequest) {
     const filePath = join(uploadDir, uniqueFileName);
     writeFileSync(filePath, buffer);
 
-    const localUrl = `/uploads/${folder}/${uniqueFileName}`;
+    let localUrl = `/uploads/${folder}/${uniqueFileName}`;
+    if (localUrl.startsWith("/")) {
+      localUrl = `${req.nextUrl?.origin || "http://localhost:3000"}${localUrl}`;
+    }
     return NextResponse.json({ url: localUrl, isS3: false, filename: uniqueFileName });
   } catch (err: any) {
     console.error("Upload error:", err);

@@ -50,10 +50,23 @@ import {
   QrCode,
   Wifi,
   WifiOff,
+  Search,
+  UserCheck,
+  Phone,
 } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
 import { useRazorpay } from "@/hooks/useRazorpay";
 import { DeleteAccountDialog } from "@/components/ui/delete-account-dialog";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { FontSelector } from "@/components/font-selector/font-selector";
 import { type StoryData, DEFAULT_STORY_DATA, STORY_QUOTES, parseStory } from "@/components/story/story";
 import { getPlayableMediaUrl } from "@/lib/utils";
@@ -479,16 +492,32 @@ export default function AdminPage() {
   const [waSending, setWaSending] = useState(false);
   const [waLogs, setWaLogs] = useState<any[]>([]);
   const [waLogsLoading, setWaLogsLoading] = useState(false);
+  const [waLogsPage, setWaLogsPage] = useState(1);
+  const [waClearingLogs, setWaClearingLogs] = useState(false);
+  const [clearLogsDialogOpen, setClearLogsDialogOpen] = useState(false);
+  const [waSendImage, setWaSendImage] = useState(false);
+  const [waSelectedImageUrl, setWaSelectedImageUrl] = useState("");
+  const [waUploading, setWaUploading] = useState(false);
+  const [waContactsDialogOpen, setWaContactsDialogOpen] = useState(false);
+  const [waContactsLoading, setWaContactsLoading] = useState(false);
+  const [waContactsList, setWaContactsList] = useState<any[]>([]);
+  const [waContactsSearch, setWaContactsSearch] = useState("");
+  const [waContactsTab, setWaContactsTab] = useState<"whatsapp" | "rsvps">("whatsapp");
+  const [waSelectedContacts, setWaSelectedContacts] = useState<string[]>([]);
 
   // Auto-generate a default WhatsApp message when slugInput or user names change
   useEffect(() => {
     if (coupleNames && slugInput) {
       setWaMessage(`Hello! We are thrilled to invite you to our wedding.\n\n${coupleNames}\n\nPlease view our full invitation and RSVP here:\nhttps://vivahaluxe.com/invite/${slugInput}`);
     }
-  }, [coupleNames, slugInput]);
+    if (!waSelectedImageUrl && heroBgUrl) {
+      setWaSelectedImageUrl(heroBgUrl);
+    }
+  }, [coupleNames, slugInput, heroBgUrl]);
 
-  const checkWaStatus = async () => {
-    setWaStatus("LOADING");
+  const checkWaStatus = async (isBackground: boolean | any = false) => {
+    const background = typeof isBackground === "boolean" ? isBackground : false;
+    if (!background) setWaStatus("LOADING");
     try {
       const res = await fetch("/api/whatsapp/session");
       const data = await res.json();
@@ -498,11 +527,13 @@ export default function AdminPage() {
       } else if (data.status === "QR_READY") {
         setWaStatus("QR_READY");
         setWaQr(data.qr);
+      } else if (data.status === "LOADING") {
+        setWaStatus("LOADING");
       } else {
         setWaStatus("DISCONNECTED");
       }
     } catch (e) {
-      setWaStatus("DISCONNECTED");
+      if (!isBackground) setWaStatus("DISCONNECTED");
     }
   };
 
@@ -521,9 +552,85 @@ export default function AdminPage() {
     }
   };
 
+  const handleClearWaLogs = () => {
+    setClearLogsDialogOpen(true);
+  };
+
+  const handleClearWaLogsConfirmed = async () => {
+    setWaClearingLogs(true);
+    try {
+      const res = await fetch("/api/whatsapp/logs", { method: "DELETE" });
+      if (res.ok) {
+        setWaLogs([]);
+        setWaLogsPage(1);
+        toast.success("All broadcast logs cleared successfully");
+        setClearLogsDialogOpen(false);
+      } else {
+        toast.error("Failed to clear logs");
+      }
+    } catch (e) {
+      toast.error("An error occurred while clearing logs");
+    } finally {
+      setWaClearingLogs(false);
+    }
+  };
+
+  const fetchWaContacts = async () => {
+    setWaContactsLoading(true);
+    try {
+      const res = await fetch("/api/whatsapp/contacts");
+      const data = await res.json();
+      if (data.contacts && Array.isArray(data.contacts)) {
+        const seen = new Set();
+        const unique = data.contacts.filter((c: any) => {
+          const k = c.id || c.number || Math.random().toString();
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+        setWaContactsList(unique);
+      }
+      if (data.warning && (!data.contacts || data.contacts.length === 0)) {
+        toast.error(data.warning);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not fetch live WhatsApp contacts");
+    } finally {
+      setWaContactsLoading(false);
+    }
+  };
+
+  const toggleSelectContact = (phoneOrId: string) => {
+    // Clean to just digits plus maybe leading plus or country code
+    const cleaned = phoneOrId.replace(/[^0-9]/g, "");
+    if (!cleaned) return;
+    setWaSelectedContacts((prev) =>
+      prev.includes(cleaned) ? prev.filter((p) => p !== cleaned) : [...prev, cleaned]
+    );
+  };
+
+  const handleAddSelectedContactsToBroadcast = () => {
+    if (waSelectedContacts.length === 0) return;
+    const existing = waNumbers
+      .split(",")
+      .map((n) => n.trim())
+      .filter(Boolean);
+    const combined = Array.from(new Set([...existing, ...waSelectedContacts]));
+    setWaNumbers(combined.join(", "));
+    setWaSelectedContacts([]);
+    setWaContactsDialogOpen(false);
+    toast.success(`Added ${waSelectedContacts.length} numbers to Guest Phone Numbers list!`);
+  };
+
+
   useEffect(() => {
     if (activeTab === "whatsapp") {
       checkWaStatus();
+      const interval = setInterval(() => {
+        checkWaStatus(true);
+      }, 3000);
+      return () => clearInterval(interval);
     }
   }, [activeTab]);
 
@@ -534,6 +641,34 @@ export default function AdminPage() {
       await checkWaStatus();
     } catch (e) {
       toast.error("Failed to disconnect WhatsApp");
+    }
+  };
+
+  const handleWaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // Clear input so user can re-select or pick a new file anytime
+    if (!file) return;
+    setWaUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "whatsapp-invites");
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        const absoluteUrl = data.url.startsWith("/") ? `${window.location.origin}${data.url}` : data.url;
+        setWaSelectedImageUrl(absoluteUrl);
+        toast.success(data.isS3 ? "Photo uploaded to S3 successfully!" : "Photo uploaded and ready for broadcast!");
+      } else {
+        toast.error(data.error || "Upload failed");
+      }
+    } catch (err) {
+      toast.error("Failed to upload photo to S3");
+    } finally {
+      setWaUploading(false);
     }
   };
 
@@ -548,17 +683,31 @@ export default function AdminPage() {
       const res = await fetch("/api/whatsapp/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ numbers: numbersList, message: waMessage })
+        body: JSON.stringify({ 
+          numbers: numbersList, 
+          message: waMessage,
+          imageUrl: waSendImage && waSelectedImageUrl.trim() ? waSelectedImageUrl.trim() : undefined
+        })
       });
       const data = await res.json();
       
-      if (data.success) {
-        toast.success(`Successfully sent ${data.sent} messages!`);
-        setWaNumbers(""); // clear input
+      if (data.success && data.sent > 0) {
+        toast.success(`Successfully sent ${data.sent} of ${data.total} messages!`);
+        if (data.sent === data.total) {
+          setWaNumbers(""); // clear input only if all sent
+        }
         fetchWaLogs(); // refresh logs
+      } else if (data.success && data.sent === 0) {
+        const firstError = data.results?.[0]?.error || "Session not active or phone number invalid.";
+        if (firstError.includes("not active") || firstError.includes("Start the session") || firstError.includes("STOPPED")) {
+          toast.error("Your WhatsApp session is currently initializing. Please wait 5 seconds and click 'Send Broadcast' again.");
+        } else {
+          toast.error(`Broadcast failed: ${firstError}`);
+        }
+        fetchWaLogs();
       } else {
         toast.error(data.error || "Failed to send messages");
-        fetchWaLogs(); // refresh logs even if failed
+        fetchWaLogs();
       }
     } catch (e) {
       toast.error("An error occurred while sending");
@@ -1189,103 +1338,116 @@ export default function AdminPage() {
 
   const currentThemeObj = INVITE_THEMES.find((t) => t.key === inviteTheme) || INVITE_THEMES[0];
 
+  const filteredWaContacts = waContactsList.filter((c) => {
+    const q = waContactsSearch.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      (c.name && c.name.toLowerCase().includes(q)) ||
+      (c.pushName && c.pushName.toLowerCase().includes(q)) ||
+      (c.number && c.number.includes(q)) ||
+      (c.id && c.id.toLowerCase().includes(q))
+    );
+  });
+
+  const filteredRsvpContacts = rsvps.filter((r) => {
+    const q = waContactsSearch.toLowerCase().trim();
+    if (!q) return true;
+    return (
+      (r.guestName && r.guestName.toLowerCase().includes(q)) ||
+      (r.phone && r.phone.includes(q)) ||
+      (r.email && r.email.toLowerCase().includes(q))
+    );
+  });
+
   return (
     <>
-    <div className="min-h-screen bg-[#FAF8F5] text-[#22201E] py-8 sm:py-12 px-4 sm:px-8 md:px-12">
-      <main className="max-w-6xl mx-auto px-4 sm:px-8 py-8 sm:py-12">
+    <div className="min-h-screen bg-[#FAF8F5] text-[#22201E] py-3 sm:py-6 md:py-10 px-2 sm:px-4 md:px-8">
+      <main className="max-w-6xl mx-auto px-1 sm:px-4 py-2 sm:py-6">
 
         {/* Tab 1: Invites & Full Profile Details */}
-        <div className="bg-emerald-900 text-white px-5 py-3 rounded-sm flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
-          <div className="flex items-center gap-2 text-xs">
-            <MessageCircle className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>Need customization assistance or Prisma database help? Chat directly with Platform Support (+91 70124 06453).</span>
+        <div className="bg-emerald-900 text-white px-3.5 sm:px-5 py-2 sm:py-3 rounded-sm flex flex-col sm:flex-row items-center justify-between gap-2.5 shadow-md mb-4">
+          <div className="flex items-center gap-2 text-xs text-center sm:text-left">
+            <MessageCircle className="w-4 h-4 text-emerald-400 shrink-0 hidden sm:inline-block" />
+            <span>Need assistance or database help? Chat directly with Platform Support (+91 70124 06453).</span>
           </div>
           <a
             href="https://wa.me/917012406453?text=Hello%20VivahaLuxe%20Support%2C%20I%20need%20help%20with%20my%20wedding%20invitation"
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-[#25D366] hover:bg-[#20BD5A] text-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider shrink-0 transition-all"
+            className="bg-[#25D366] hover:bg-[#20BD5A] text-white px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider shrink-0 transition-all"
           >
             Chat on WhatsApp
           </a>
         </div>
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#E8E2D9]">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-[#E8E2D9]">
           <div>
-            <div className="flex items-center space-x-2 text-xs uppercase tracking-[0.25em] text-[#888178] mb-1">
-              <Unlock className="w-3.5 h-3.5 text-[#C4B7A6]" />
+            <div className="flex items-center space-x-2 text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.25em] text-[#888178] mb-1">
+              <Unlock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#C4B7A6]" />
               <span>Couple Studio Dashboard</span>
             </div>
-            <h1 className="font-serif text-3xl sm:text-4xl text-[#22201E]">Wedding Website Configurator</h1>
+            <h1 className="font-serif text-2xl sm:text-3xl md:text-4xl text-[#22201E]">Wedding Website Configurator</h1>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full lg:w-auto">
             <Link
               href={`/invite/${slugInput}`}
               target="_blank"
-              className="px-4 py-2 bg-emerald-800 text-white text-xs uppercase tracking-widest hover:bg-emerald-700 transition-colors flex items-center gap-1.5 rounded-xs font-semibold"
+              className="flex-1 sm:flex-none justify-center px-3 sm:px-4 py-1.5 sm:py-2 bg-emerald-800 text-white text-[11px] sm:text-xs uppercase tracking-widest hover:bg-emerald-700 transition-colors flex items-center gap-1.5 rounded-xs font-semibold"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>Preview Live Page</span>
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+              <span className="whitespace-nowrap">Preview Live</span>
             </Link>
 
             <Link
               href="/"
-              className="px-4 py-2 bg-[#22201E] text-white text-xs uppercase tracking-widest hover:bg-[#3A3632] transition-colors flex items-center gap-1.5 rounded-xs"
+              className="flex-1 sm:flex-none justify-center px-3 sm:px-4 py-1.5 sm:py-2 bg-[#22201E] text-white text-[11px] sm:text-xs uppercase tracking-widest hover:bg-[#3A3632] transition-colors flex items-center gap-1.5 rounded-xs"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
+              <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
               <span>Hub</span>
             </Link>
 
             <button
               type="button"
               onClick={handleLogout}
-              className="px-4 py-2 bg-red-600 text-white text-xs uppercase tracking-widest hover:bg-red-700 transition-colors flex items-center gap-1.5 rounded-xs font-bold shadow-sm"
+              className="flex-none px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 text-white text-[11px] sm:text-xs uppercase tracking-widest hover:bg-red-700 transition-colors flex items-center gap-1.5 rounded-xs font-bold shadow-sm"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-3.5 h-3.5 shrink-0" />
               <span>Log Out</span>
             </button>
           </div>
         </div>
 
         {/* Active Logged-In Couple Profile Banner */}
-        <div className="bg-white p-4 rounded-sm border border-[#E8E2D9] shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#FAF8F5] border border-[#D4AF37] flex items-center justify-center text-[#D4AF37]">
-              <Sparkles className="w-5 h-5" />
+        <div className="bg-white p-3 sm:p-4 rounded-sm border border-[#E8E2D9] shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3 my-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#FAF8F5] border border-[#D4AF37] flex items-center justify-center text-[#D4AF37] shrink-0">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#22201E]">Logged in Celebration:</span>
-                <span className="text-sm font-serif font-bold text-emerald-800">{coupleNames}</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[#22201E]">Logged in:</span>
+                <span className="text-xs sm:text-sm font-serif font-bold text-emerald-800 truncate">{coupleNames}</span>
               </div>
-              <p className="text-[11px] text-[#888178] font-mono mt-0.5">
+              <p className="text-[10px] sm:text-[11px] text-[#888178] font-mono mt-0.5 truncate">
                 Live Portal: /invite/{slugInput}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="bg-[#FAF8F5] border border-[#E8E2D9] px-3.5 py-1 rounded-full flex items-center gap-2 shadow-2xs">
-              <Eye className="w-3.5 h-3.5 text-[#D4AF37]" />
-              <span className="text-xs font-bold text-[#22201E]">Unique Visitors:</span>
-              <span className="text-xs font-mono font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+          <div className="flex flex-wrap items-center justify-between md:justify-end gap-2 sm:gap-3 border-t md:border-t-0 pt-2 md:pt-0 border-[#E8E2D9]">
+            <div className="bg-[#FAF8F5] border border-[#E8E2D9] px-2.5 sm:px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
+              <Eye className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
+              <span className="text-[11px] sm:text-xs font-bold text-[#22201E]">Visitors:</span>
+              <span className="text-[11px] sm:text-xs font-mono font-extrabold text-emerald-700 bg-emerald-50 px-1.5 sm:px-2 py-0.5 rounded-full border border-emerald-200">
                 {viewCount}
               </span>
             </div>
-            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-              <span>Verified Owner</span>
+            <span className="text-[10px] sm:text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2 sm:px-2.5 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+              <span>Verified</span>
             </span>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="px-3.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold rounded-xs flex items-center gap-1.5 transition-all"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Log Out</span>
-            </button>
           </div>
         </div>
 
@@ -1293,96 +1455,96 @@ export default function AdminPage() {
         {userPlan === "FREE" && !isDemoUser && <AdBanner slot="admin" className="my-2" />}
 
         {/* Tabs */}
-        <div className="flex border-b border-[#E8E2D9] gap-4 overflow-x-auto">
+        <div className="flex border-b border-[#E8E2D9] gap-1 sm:gap-3 overflow-x-auto no-scrollbar py-1">
           <button
             onClick={() => setActiveTab("dashboard")}
-            className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-5 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors shrink-0 ${
               activeTab === "dashboard" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
             }`}
           >
-            <LayoutDashboard className="w-4 h-4 text-blue-600" />
+            <LayoutDashboard className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
             <span>Dashboard Overview</span>
           </button>
 
           <button
             onClick={() => setActiveTab("invites")}
-            className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-5 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors shrink-0 ${
               activeTab === "invites" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
             }`}
           >
-            <Share2 className="w-4 h-4 text-emerald-700" />
+            <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700 shrink-0" />
             <span>Full Profile Details &amp; Themes</span>
           </button>
 
           <button
             onClick={() => setActiveTab("hero")}
-            className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-5 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors shrink-0 ${
               activeTab === "hero" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
             }`}
           >
-            <Film className="w-4 h-4 text-amber-600" />
+            <Film className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 shrink-0" />
             <span>Hero Media &amp; Audio Studio</span>
           </button>
 
           <button
             onClick={() => setActiveTab("photos")}
-            className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-5 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors shrink-0 ${
               activeTab === "photos" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
             }`}
           >
-            <ImageIcon className="w-4 h-4 text-blue-600" />
+            <ImageIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
             <span>Photo Gallery</span>
           </button>
 
           <button
             onClick={() => setActiveTab("whatsapp")}
-            className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-5 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors shrink-0 ${
               activeTab === "whatsapp" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
             }`}
           >
-            <Smartphone className="w-4 h-4 text-green-600" />
+            <Smartphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-600 shrink-0" />
             <span>WhatsApp Studio</span>
           </button>
 
           <button
             onClick={() => setActiveTab("card")}
-            className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 sm:px-5 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors shrink-0 ${
               activeTab === "card" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
             }`}
           >
-            <MessageCircle className="w-4 h-4 text-[#25D366]" />
-            <span>Personalize &amp; Send Invitation (WhatsApp &amp; Mail)</span>
+            <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#25D366] shrink-0" />
+            <span>Personalize &amp; Send Invitation</span>
           </button>
 
           <button
             onClick={() => setActiveTab("rsvps")}
-            className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-3 sm:px-5 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors shrink-0 ${
               activeTab === "rsvps" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
             }`}
           >
-            <Users className="w-4 h-4" />
+            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span>Guest RSVPs ({rsvps.length})</span>
           </button>
 
           {!isDemoUser && (
             <button
               onClick={() => setActiveTab("bulk-print")}
-              className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3 sm:px-5 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors shrink-0 ${
                 activeTab === "bulk-print" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
               }`}
             >
-              <Printer className="w-4 h-4 text-amber-600" />
-              <span>🖨️ Physical Bulk Print Orders ({userOrders.length})</span>
+              <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 shrink-0" />
+              <span>🖨️ Physical Bulk Print ({userOrders.length})</span>
             </button>
           )}
 
           <button
             onClick={() => setActiveTab("billing")}
-            className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 sm:px-5 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors shrink-0 ${
               activeTab === "billing" ? "border-[#662D91] text-[#662D91] font-bold" : "border-transparent text-[#888178]"
             }`}
           >
-            <Crown className="w-4 h-4 text-[#662D91]" />
+            <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#662D91] shrink-0" />
             <span>💎 Pro Plan &amp; Billing (₹499)</span>
           </button>
         </div>
@@ -1395,45 +1557,45 @@ export default function AdminPage() {
               <p className="text-xs text-[#888178] mt-1">A high-level summary of your invitation's performance and status.</p>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="bg-white border border-[#E8E2D9] p-5 rounded-sm shadow-sm flex flex-col items-center text-center">
-                <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-3">
-                  <Eye className="w-5 h-5" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
+              <div className="bg-white border border-[#E8E2D9] p-3 sm:p-5 rounded-sm shadow-2xs flex flex-col items-center text-center">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-2 sm:mb-3 shrink-0">
+                  <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Total Unique Visitors</p>
-                <p className="text-3xl font-serif font-bold text-[#22201E] mt-1">{viewCount}</p>
-              </div>
-              
-              <div className="bg-white border border-[#E8E2D9] p-5 rounded-sm shadow-sm flex flex-col items-center text-center">
-                <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 mb-3">
-                  <Users className="w-5 h-5" />
-                </div>
-                <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Total RSVPs</p>
-                <p className="text-3xl font-serif font-bold text-[#22201E] mt-1">{rsvps.length}</p>
-              </div>
-              
-              <div className="bg-white border border-[#E8E2D9] p-5 rounded-sm shadow-sm flex flex-col items-center text-center">
-                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-3">
-                  <ImageIcon className="w-5 h-5" />
-                </div>
-                <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Gallery Photos</p>
-                <p className="text-3xl font-serif font-bold text-[#22201E] mt-1">{photosList.length}</p>
+                <p className="text-[9px] sm:text-[10px] text-[#888178] uppercase font-bold tracking-wider">Unique Visitors</p>
+                <p className="text-2xl sm:text-3xl font-serif font-bold text-[#22201E] mt-1">{viewCount}</p>
               </div>
 
-              <div className="bg-white border border-[#E8E2D9] p-5 rounded-sm shadow-sm flex flex-col items-center text-center">
-                <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 mb-3">
-                  <Printer className="w-5 h-5" />
+              <div className="bg-white border border-[#E8E2D9] p-3 sm:p-5 rounded-sm shadow-2xs flex flex-col items-center text-center">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 mb-2 sm:mb-3 shrink-0">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Print Orders</p>
-                <p className="text-3xl font-serif font-bold text-[#22201E] mt-1">{userOrders.length}</p>
+                <p className="text-[9px] sm:text-[10px] text-[#888178] uppercase font-bold tracking-wider">Total RSVPs</p>
+                <p className="text-2xl sm:text-3xl font-serif font-bold text-[#22201E] mt-1">{rsvps.length}</p>
               </div>
 
-              <div className="bg-white border border-[#E8E2D9] p-5 rounded-sm shadow-sm flex flex-col items-center text-center">
-                <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 mb-3">
-                  <Crown className="w-5 h-5" />
+              <div className="bg-white border border-[#E8E2D9] p-3 sm:p-5 rounded-sm shadow-2xs flex flex-col items-center text-center">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 mb-2 sm:mb-3 shrink-0">
+                  <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Subscription Plan</p>
-                <p className="text-xl font-serif font-bold text-[#22201E] mt-2">{userPlan === "PRO" ? "PRO" : "FREE"}</p>
+                <p className="text-[9px] sm:text-[10px] text-[#888178] uppercase font-bold tracking-wider">Gallery Photos</p>
+                <p className="text-2xl sm:text-3xl font-serif font-bold text-[#22201E] mt-1">{photosList.length}</p>
+              </div>
+
+              <div className="bg-white border border-[#E8E2D9] p-3 sm:p-5 rounded-sm shadow-2xs flex flex-col items-center text-center">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 mb-2 sm:mb-3 shrink-0">
+                  <Printer className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <p className="text-[9px] sm:text-[10px] text-[#888178] uppercase font-bold tracking-wider">Print Orders</p>
+                <p className="text-2xl sm:text-3xl font-serif font-bold text-[#22201E] mt-1">{userOrders.length}</p>
+              </div>
+
+              <div className="bg-white border border-[#E8E2D9] p-3 sm:p-5 rounded-sm shadow-2xs flex flex-col items-center text-center col-span-2 sm:col-span-1">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 mb-2 sm:mb-3 shrink-0">
+                  <Crown className="w-4 h-4 sm:w-5 sm:h-5" />
+                </div>
+                <p className="text-[9px] sm:text-[10px] text-[#888178] uppercase font-bold tracking-wider">Subscription Plan</p>
+                <p className="text-lg sm:text-xl font-serif font-bold text-[#22201E] mt-1 sm:mt-2">{userPlan === "PRO" ? "PRO" : "FREE"}</p>
               </div>
             </div>
             
@@ -2764,36 +2926,36 @@ export default function AdminPage() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-8">
-                <div className="flex items-center justify-between bg-[#FAF8F5] p-4 border border-[#E8E2D9] rounded-sm">
-                  <div className="flex items-center gap-3">
+              <div className="space-y-4 sm:space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#FAF8F5] p-3 sm:p-4 border border-[#E8E2D9] rounded-sm gap-3">
+                  <div className="flex items-center gap-2.5 sm:gap-3">
                     {waStatus === "CONNECTED" ? (
-                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-                        <Wifi className="w-5 h-5" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
+                        <Wifi className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
                     ) : waStatus === "LOADING" ? (
-                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 animate-pulse">
-                        <RefreshCw className="w-5 h-5 animate-spin" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 animate-pulse shrink-0">
+                        <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                       </div>
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600">
-                        <WifiOff className="w-5 h-5" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                        <WifiOff className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
                     )}
                     <div>
-                      <h3 className="font-bold text-sm">Connection Status</h3>
-                      <p className="text-xs text-[#888178]">
+                      <h3 className="font-bold text-xs sm:text-sm">Connection Status</h3>
+                      <p className="text-[11px] sm:text-xs text-[#888178]">
                         {waStatus === "CONNECTED" ? "Linked & Ready" : waStatus === "LOADING" ? "Checking session..." : "Not Connected"}
                       </p>
                     </div>
                   </div>
                   <div>
                     {waStatus === "CONNECTED" ? (
-                      <button onClick={handleWaDisconnect} className="text-xs text-red-600 font-bold uppercase tracking-wider hover:underline">
+                      <button onClick={handleWaDisconnect} className="text-[11px] sm:text-xs text-red-600 font-bold uppercase tracking-wider hover:underline py-1">
                         Disconnect
                       </button>
                     ) : (
-                      <button onClick={checkWaStatus} className="text-xs text-blue-600 font-bold uppercase tracking-wider hover:underline flex items-center gap-1">
+                      <button onClick={() => checkWaStatus(false)} className="text-[11px] sm:text-xs text-blue-600 font-bold uppercase tracking-wider hover:underline flex items-center gap-1 py-1">
                         <RefreshCw className="w-3 h-3" /> Refresh Status
                       </button>
                     )}
@@ -2801,42 +2963,164 @@ export default function AdminPage() {
                 </div>
 
                 {waStatus === "QR_READY" && waQr && (
-                  <div className="text-center p-8 bg-white border border-[#E8E2D9] rounded-sm">
-                    <h3 className="font-serif text-xl mb-2">Scan to Link WhatsApp</h3>
-                    <p className="text-xs text-[#888178] mb-6">Open WhatsApp on your phone, go to Linked Devices, and scan this QR code.</p>
-                    <div className="inline-block p-4 bg-white border-2 border-gray-100 shadow-sm rounded-xl">
-                      <img src={waQr} alt="WhatsApp QR Code" className="w-64 h-64 object-contain" />
+                  <div className="text-center p-4 sm:p-8 bg-white border border-[#E8E2D9] rounded-sm">
+                    <h3 className="font-serif text-lg sm:text-xl mb-1.5">Scan to Link WhatsApp</h3>
+                    <p className="text-xs text-[#888178] mb-4 sm:mb-6">Open WhatsApp on your phone, go to Linked Devices, and scan this QR code.</p>
+                    <div className="inline-block p-3 sm:p-4 bg-white border-2 border-gray-100 shadow-xs rounded-xl">
+                      <img src={waQr} alt="WhatsApp QR Code" className="w-48 h-48 sm:w-64 sm:h-64 object-contain" />
                     </div>
                   </div>
                 )}
 
                 {waStatus === "CONNECTED" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <div className="space-y-3 sm:space-y-4">
                       <div>
-                        <label className="block text-xs font-bold text-[#888178] uppercase tracking-wider mb-2">
-                          Guest Phone Numbers
-                        </label>
-                        <p className="text-[10px] text-gray-500 mb-2">Enter numbers with country code, separated by commas (e.g. 919876543210, 918765432109).</p>
+                        <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                          <label className="block text-[11px] sm:text-xs font-bold text-[#888178] uppercase tracking-wider">
+                            Guest Phone Numbers
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setWaContactsSearch("");
+                              setWaContactsDialogOpen(true);
+                              if (waContactsList.length === 0 && waStatus === "CONNECTED") {
+                                fetchWaContacts();
+                              }
+                            }}
+                            className="text-[11px] font-bold text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-2.5 py-1 rounded flex items-center gap-1.5 transition-colors"
+                          >
+                            <Search className="w-3.5 h-3.5" />
+                            <span>Search &amp; Select Contacts ({waContactsList.length ? `${waContactsList.length} live` : "Live"})</span>
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-gray-500 mb-1.5">Enter numbers with country code, separated by commas (e.g. 919876543210, 918765432109).</p>
                         <textarea
                           value={waNumbers}
                           onChange={(e) => setWaNumbers(e.target.value)}
                           placeholder="919876543210, 918765432109..."
-                          className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-4 py-3 rounded-sm text-sm focus:outline-none focus:border-[#C4B7A6] min-h-[150px]"
+                          className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-3 sm:px-4 py-2 sm:py-3 rounded-sm text-xs sm:text-sm focus:outline-none focus:border-[#C4B7A6] min-h-[120px] sm:min-h-[140px]"
                         />
                       </div>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       <div>
-                        <label className="block text-xs font-bold text-[#888178] uppercase tracking-wider mb-2">
+                        <label className="block text-[11px] sm:text-xs font-bold text-[#888178] uppercase tracking-wider mb-1.5">
                           Message Template
                         </label>
                         <textarea
                           value={waMessage}
                           onChange={(e) => setWaMessage(e.target.value)}
-                          className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-4 py-3 rounded-sm text-sm focus:outline-none focus:border-[#C4B7A6] min-h-[150px]"
+                          className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-3 sm:px-4 py-2 sm:py-3 rounded-sm text-xs sm:text-sm focus:outline-none focus:border-[#C4B7A6] min-h-[120px] sm:min-h-[140px]"
                         />
                       </div>
+
+                      <div className="bg-[#FAF8F5] border border-[#E8E2D9] p-3 rounded-sm space-y-3">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={waSendImage}
+                            onChange={(e) => setWaSendImage(e.target.checked)}
+                            className="w-4 h-4 rounded text-green-600 focus:ring-green-500 border-gray-300 cursor-pointer"
+                          />
+                          <span className="text-xs font-bold text-[#22201E] flex items-center gap-1.5">
+                            <ImageIcon className="w-3.5 h-3.5 text-green-600" />
+                            Attach Couple / Invite Photo (Optional)
+                          </span>
+                        </label>
+
+                        {waSendImage && (
+                          <div className="pt-2 border-t border-[#E8E2D9] space-y-3 pl-2 sm:pl-4">
+                            <div>
+                              <label className="block text-[11px] font-semibold text-[#888178] uppercase tracking-wider mb-1.5">
+                                Select Image from Invitation
+                              </label>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto p-1.5 border border-[#E8E2D9] rounded bg-white">
+                                {heroBgUrl && (
+                                  <div
+                                    onClick={() => setWaSelectedImageUrl(heroBgUrl)}
+                                    className={`flex items-center gap-2 p-1.5 rounded cursor-pointer border text-xs transition-colors ${
+                                      waSelectedImageUrl === heroBgUrl ? "border-green-600 bg-green-50 font-semibold text-green-900" : "border-gray-200 hover:bg-gray-50 text-gray-700"
+                                    }`}
+                                  >
+                                    <img src={heroBgUrl} alt="Hero" className="w-9 h-9 object-cover rounded flex-shrink-0 border" />
+                                    <span className="truncate">Main Hero Photo</span>
+                                  </div>
+                                )}
+                                {photosList && photosList.map((photo, idx) => {
+                                  const imgUrl = photo.src || photo.url;
+                                  if (!imgUrl) return null;
+                                  return (
+                                    <div
+                                      key={idx}
+                                      onClick={() => setWaSelectedImageUrl(imgUrl)}
+                                      className={`flex items-center gap-2 p-1.5 rounded cursor-pointer border text-xs transition-colors ${
+                                        waSelectedImageUrl === imgUrl ? "border-green-600 bg-green-50 font-semibold text-green-900" : "border-gray-200 hover:bg-gray-50 text-gray-700"
+                                      }`}
+                                    >
+                                      <img src={imgUrl} alt={`Gallery ${idx+1}`} className="w-9 h-9 object-cover rounded flex-shrink-0 border" />
+                                      <span className="truncate">{photo.caption || `Gallery Photo #${idx + 1}`}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-[11px] font-semibold text-[#888178] uppercase tracking-wider mb-1">
+                                  Upload New Photo to S3
+                                </label>
+                                <label className="flex items-center justify-center gap-2 w-full bg-white hover:bg-green-50 border border-dashed border-[#C4B7A6] hover:border-green-600 px-3 py-2 rounded cursor-pointer text-xs transition-colors font-medium text-gray-700">
+                                  {waUploading ? (
+                                    <>
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-green-600" />
+                                      <span>Uploading to S3...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Upload className="w-3.5 h-3.5 text-green-600" />
+                                      <span>Upload Image to S3</span>
+                                    </>
+                                  )}
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleWaUpload}
+                                    disabled={waUploading}
+                                    className="hidden"
+                                  />
+                                </label>
+                              </div>
+
+                              <div>
+                                <label className="block text-[11px] font-semibold text-[#888178] uppercase tracking-wider mb-1">
+                                  Or Enter Custom Image URL
+                                </label>
+                                <input
+                                  type="text"
+                                  value={waSelectedImageUrl}
+                                  onChange={(e) => setWaSelectedImageUrl(e.target.value)}
+                                  placeholder="https://your-domain.com/photo.jpg"
+                                  className="w-full bg-white border border-[#E8E2D9] px-3 py-2 rounded text-xs focus:outline-none focus:border-green-600 text-gray-800"
+                                />
+                              </div>
+                            </div>
+
+                            {waSelectedImageUrl && (
+                              <div className="flex items-center gap-3 pt-1 bg-white p-2 rounded border border-[#E8E2D9]">
+                                <span className="text-[11px] font-semibold text-gray-500 uppercase">Selected Preview:</span>
+                                <div className="relative w-12 h-12 rounded overflow-hidden border border-[#C4B7A6] shadow-sm flex-shrink-0">
+                                  <img src={waSelectedImageUrl} alt="WA Preview" className="w-full h-full object-cover" />
+                                </div>
+                                <span className="text-[11px] text-gray-600 truncate flex-1">{waSelectedImageUrl}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
                       <button
                         onClick={handleWaSend}
                         disabled={waSending}
@@ -2855,28 +3139,48 @@ export default function AdminPage() {
 
                 {waStatus === "CONNECTED" && waLogs.length > 0 && (
                   <div className="mt-8 border-t border-[#E8E2D9] pt-8">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-serif text-lg text-[#22201E]">Message Broadcast Logs</h3>
-                      <button onClick={fetchWaLogs} className="text-xs flex items-center gap-1 text-[#888178] hover:text-[#22201E]">
-                        <RefreshCw className={`w-3 h-3 ${waLogsLoading ? 'animate-spin' : ''}`} /> Refresh
-                      </button>
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                      <div>
+                        <h3 className="font-serif text-lg text-[#22201E]">Message Broadcast Logs</h3>
+                        <p className="text-xs text-[#888178] mt-0.5">
+                          Showing {Math.min((waLogsPage - 1) * 10 + 1, waLogs.length)} - {Math.min(waLogsPage * 10, waLogs.length)} of {waLogs.length} logs
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={fetchWaLogs}
+                          disabled={waLogsLoading}
+                          className="text-xs flex items-center gap-1.5 bg-white border border-[#E8E2D9] px-3 py-1.5 rounded hover:bg-gray-50 text-[#22201E] transition-colors font-medium disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${waLogsLoading ? 'animate-spin' : ''}`} />
+                          Refresh
+                        </button>
+                        <button
+                          onClick={handleClearWaLogs}
+                          disabled={waClearingLogs}
+                          className="text-xs flex items-center gap-1.5 bg-red-50 border border-red-200 px-3 py-1.5 rounded hover:bg-red-100 text-red-600 transition-colors font-medium disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          {waClearingLogs ? "Clearing..." : "Clear Logs"}
+                        </button>
+                      </div>
                     </div>
-                    <div className="w-full overflow-x-auto">
+                    <div className="w-full overflow-x-auto border border-[#E8E2D9] rounded">
                       <table className="w-full text-left text-xs whitespace-nowrap">
                         <thead>
-                          <tr className="border-b border-[#E8E2D9] uppercase text-[#888178]">
-                            <th className="py-2 px-2">Time</th>
-                            <th className="py-2 px-2">Recipient</th>
-                            <th className="py-2 px-2">Status</th>
-                            <th className="py-2 px-2">Error</th>
+                          <tr className="border-b border-[#E8E2D9] uppercase text-[#888178] bg-[#FAF8F5]">
+                            <th className="py-2.5 px-3">Time</th>
+                            <th className="py-2.5 px-3">Recipient</th>
+                            <th className="py-2.5 px-3">Status</th>
+                            <th className="py-2.5 px-3">Error</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#E8E2D9]">
-                          {waLogs.map((log: any) => (
-                            <tr key={log.id}>
-                              <td className="py-2 px-2 text-gray-500">{new Date(log.createdAt).toLocaleString()}</td>
-                              <td className="py-2 px-2 font-medium">{log.recipient}</td>
-                              <td className="py-2 px-2">
+                        <tbody className="divide-y divide-[#E8E2D9] bg-white">
+                          {waLogs.slice((waLogsPage - 1) * 10, waLogsPage * 10).map((log: any) => (
+                            <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
+                              <td className="py-2.5 px-3 text-gray-500">{new Date(log.createdAt).toLocaleString()}</td>
+                              <td className="py-2.5 px-3 font-medium text-gray-800">{log.recipient}</td>
+                              <td className="py-2.5 px-3">
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                   log.status === 'DELIVERED' || log.status === 'READ' || log.status === 'PLAYED' ? 'bg-green-100 text-green-800' :
                                   log.status === 'SENT' ? 'bg-blue-100 text-blue-800' :
@@ -2886,7 +3190,7 @@ export default function AdminPage() {
                                   {log.status}
                                 </span>
                               </td>
-                              <td className="py-2 px-2 text-red-500 max-w-[200px] truncate" title={log.errorMessage || ""}>
+                              <td className="py-2.5 px-3 text-red-500 max-w-[200px] truncate" title={log.errorMessage || ""}>
                                 {log.errorMessage || "—"}
                               </td>
                             </tr>
@@ -2894,6 +3198,30 @@ export default function AdminPage() {
                         </tbody>
                       </table>
                     </div>
+
+                    {waLogs.length > 10 && (
+                      <div className="flex items-center justify-between mt-4 pt-2">
+                        <div className="text-xs text-[#888178]">
+                          Page <span className="font-semibold text-[#22201E]">{waLogsPage}</span> of <span className="font-semibold text-[#22201E]">{Math.ceil(waLogs.length / 10)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setWaLogsPage(p => Math.max(1, p - 1))}
+                            disabled={waLogsPage === 1}
+                            className="text-xs px-3 py-1.5 border border-[#E8E2D9] rounded bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-[#22201E] font-medium transition-colors"
+                          >
+                            Previous
+                          </button>
+                          <button
+                            onClick={() => setWaLogsPage(p => Math.min(Math.ceil(waLogs.length / 10), p + 1))}
+                            disabled={waLogsPage >= Math.ceil(waLogs.length / 10)}
+                            className="text-xs px-3 py-1.5 border border-[#E8E2D9] rounded bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-[#22201E] font-medium transition-colors"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -3567,6 +3895,325 @@ export default function AdminPage() {
       onConfirm={handleDeleteAccountConfirmed}
       loading={deleteLoading}
     />
+
+    {/* Clear Broadcast Logs Confirmation Dialog */}
+    <AlertDialog open={clearLogsDialogOpen} onOpenChange={setClearLogsDialogOpen}>
+      <AlertDialogContent className="bg-white border border-[#E8E2D9] text-[#22201E]">
+        <AlertDialogHeader>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-full bg-red-50 border border-red-200 flex items-center justify-center shrink-0">
+              <Trash2 className="w-5 h-5 text-red-600" />
+            </div>
+            <AlertDialogTitle className="font-serif text-lg text-[#22201E]">Clear All Broadcast Logs?</AlertDialogTitle>
+          </div>
+          <AlertDialogDescription className="text-xs text-[#888178]">
+            Are you sure you want to delete all WhatsApp message broadcast logs? This will remove log history from your dashboard permanently. Your active WhatsApp session and connection will not be affected.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="mt-6 flex items-center gap-3">
+          <AlertDialogCancel disabled={waClearingLogs} className="text-xs px-4 py-2 bg-white border border-[#E8E2D9] hover:bg-gray-50 text-[#22201E] rounded transition-colors">
+            Cancel
+          </AlertDialogCancel>
+          <button
+            type="button"
+            onClick={handleClearWaLogsConfirmed}
+            disabled={waClearingLogs}
+            className="inline-flex items-center justify-center rounded px-4 py-2 text-xs font-bold uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white transition-all disabled:opacity-50 gap-1.5"
+          >
+            {waClearingLogs ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Clearing...</span>
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Yes, Clear Logs</span>
+              </>
+            )}
+          </button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Search & Select Contacts Modal */}
+    <AlertDialog
+      open={waContactsDialogOpen}
+      onOpenChange={(open) => {
+        setWaContactsDialogOpen(open);
+        if (!open) {
+          setWaContactsSearch("");
+        }
+      }}
+    >
+      <AlertDialogContent className="bg-white border border-[#E8E2D9] text-[#22201E] max-w-2xl max-h-[88vh] flex flex-col p-4 sm:p-6">
+        <AlertDialogHeader>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-full bg-green-50 border border-green-200 flex items-center justify-center shrink-0">
+                <UserCheck className="w-4 h-4 text-green-600" />
+              </div>
+              <div>
+                <AlertDialogTitle className="font-serif text-base sm:text-lg text-[#22201E] text-left">Search &amp; Select Contacts</AlertDialogTitle>
+                <p className="text-[11px] text-[#888178]">Search your live WhatsApp contacts or invitation RSVPs and add them with one click.</p>
+              </div>
+            </div>
+          </div>
+        </AlertDialogHeader>
+
+        {/* Tabs: WhatsApp Contacts vs RSVPs */}
+        <div className="flex items-center gap-2 border-b border-[#E8E2D9] mt-3 pb-2">
+          <button
+            type="button"
+            onClick={() => setWaContactsTab("whatsapp")}
+            className={`px-3 py-1.5 text-xs font-bold rounded transition-colors flex items-center gap-1.5 ${
+              waContactsTab === "whatsapp"
+                ? "bg-green-600 text-white shadow-xs"
+                : "bg-[#FAF8F5] text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Phone className="w-3 h-3" />
+            <span>WhatsApp Contacts ({waContactsList.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setWaContactsTab("rsvps")}
+            className={`px-3 py-1.5 text-xs font-bold rounded transition-colors flex items-center gap-1.5 ${
+              waContactsTab === "rsvps"
+                ? "bg-green-600 text-white shadow-xs"
+                : "bg-[#FAF8F5] text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            <Users className="w-3 h-3" />
+            <span>Confirmed RSVPs ({rsvps.length})</span>
+          </button>
+        </div>
+
+        {/* Search Input Bar */}
+        <div className="relative mt-3">
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={waContactsSearch}
+            onChange={(e) => setWaContactsSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+            placeholder="Search by contact name, phone number or email..."
+            className="w-full bg-[#FAF8F5] border border-[#E8E2D9] pl-9 pr-8 py-2 rounded text-xs focus:outline-none focus:border-green-600 text-gray-800"
+          />
+          {waContactsSearch && (
+            <button
+              type="button"
+              onClick={() => setWaContactsSearch("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600 font-bold"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* Scrollable List of Contacts / RSVPs */}
+        <div className="flex-1 overflow-y-auto min-h-[220px] max-h-[350px] border border-[#E8E2D9] rounded mt-3 p-2 space-y-1.5 bg-[#FAF8F5]">
+          {waContactsLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500 gap-2">
+              <RefreshCw className="w-6 h-6 animate-spin text-green-600" />
+              <p className="text-xs font-medium">Fetching contacts from your WhatsApp session...</p>
+            </div>
+          ) : waContactsTab === "whatsapp" ? (
+            filteredWaContacts.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between pb-1.5 px-1 border-b border-[#E8E2D9] text-[11px] font-bold text-[#888178]">
+                  <span>Showing {filteredWaContacts.length} contacts</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allNums = filteredWaContacts
+                        .map((c) => (c.number ? c.number.replace(/[^0-9]/g, "") : ""))
+                        .filter(Boolean);
+                      const allSelected = allNums.every((n) => waSelectedContacts.includes(n));
+                      if (allSelected) {
+                        setWaSelectedContacts((prev) => prev.filter((p) => !allNums.includes(p)));
+                      } else {
+                        setWaSelectedContacts((prev) => Array.from(new Set([...prev, ...allNums])));
+                      }
+                    }}
+                    className="text-green-700 hover:underline"
+                  >
+                    {filteredWaContacts.every((c) =>
+                      c.number && waSelectedContacts.includes(c.number.replace(/[^0-9]/g, ""))
+                    ) && filteredWaContacts.length > 0
+                      ? "Deselect All Shown"
+                      : "Select All Shown"}
+                  </button>
+                </div>
+                {filteredWaContacts.map((contact, idx) => {
+                  const cleanedNum = contact.number ? contact.number.replace(/[^0-9]/g, "") : "";
+                  const isSelected = cleanedNum && waSelectedContacts.includes(cleanedNum);
+                  const displayName = contact.name || contact.pushName || "Unnamed Contact";
+                  return (
+                    <div
+                      key={`${contact.id || "wa"}-${idx}`}
+                      onClick={() => cleanedNum && toggleSelectContact(cleanedNum)}
+                      className={`flex items-center justify-between p-2 rounded border cursor-pointer transition-all ${
+                        isSelected
+                          ? "bg-green-50 border-green-400 shadow-2xs"
+                          : "bg-white border-transparent hover:border-[#E8E2D9]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <input
+                          type="checkbox"
+                          checked={!!isSelected}
+                          onChange={() => {}}
+                          className="w-4 h-4 rounded text-green-600 focus:ring-green-500 border-gray-300 pointer-events-none shrink-0"
+                        />
+                        {contact.profilePicUrl ? (
+                          <img
+                            src={contact.profilePicUrl}
+                            alt={displayName}
+                            className="w-8 h-8 rounded-full object-cover border border-gray-200 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-[#E8E2D9] flex items-center justify-center text-[11px] font-bold text-gray-700 shrink-0">
+                            {displayName.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="truncate">
+                          <p className="font-bold text-xs text-[#22201E] truncate">{displayName}</p>
+                          <p className="text-[10px] text-[#888178]">+{contact.number || contact.id?.split("@")[0]}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] bg-gray-100 text-gray-600 font-semibold px-2 py-0.5 rounded shrink-0">
+                        {contact.isMyContact ? "Saved Contact" : "WhatsApp"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              <div className="text-center py-10 text-gray-500">
+                <Phone className="w-8 h-8 mx-auto mb-2 opacity-30 text-green-600" />
+                <p className="text-xs font-semibold">No contacts matched "{waContactsSearch}"</p>
+                {waContactsList.length === 0 && (
+                  <div className="mt-3">
+                    <p className="text-[11px] text-[#888178] max-w-sm mx-auto">
+                      Your WhatsApp session might be running in a minimal mode or sync is ongoing. You can still pick directly from your Confirmed RSVPs!
+                    </p>
+                    <button
+                      type="button"
+                      onClick={fetchWaContacts}
+                      className="mt-2.5 text-xs text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 px-3 py-1 rounded font-bold inline-flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" /> Refresh Contacts
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          ) : filteredRsvpContacts.length > 0 ? (
+            <>
+              <div className="flex items-center justify-between pb-1.5 px-1 border-b border-[#E8E2D9] text-[11px] font-bold text-[#888178]">
+                <span>Showing {filteredRsvpContacts.length} RSVP guests</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allNums = filteredRsvpContacts
+                      .map((r) => (r.phone ? r.phone.replace(/[^0-9]/g, "") : ""))
+                      .filter(Boolean);
+                    const allSelected = allNums.every((n) => waSelectedContacts.includes(n));
+                    if (allSelected) {
+                      setWaSelectedContacts((prev) => prev.filter((p) => !allNums.includes(p)));
+                    } else {
+                      setWaSelectedContacts((prev) => Array.from(new Set([...prev, ...allNums])));
+                    }
+                  }}
+                  className="text-green-700 hover:underline"
+                >
+                  {filteredRsvpContacts.every((r) =>
+                    r.phone && waSelectedContacts.includes(r.phone.replace(/[^0-9]/g, ""))
+                  ) && filteredRsvpContacts.length > 0
+                    ? "Deselect All Shown"
+                    : "Select All Shown"}
+                </button>
+              </div>
+              {filteredRsvpContacts.map((rsvp, idx) => {
+                const cleanedNum = rsvp.phone ? rsvp.phone.replace(/[^0-9]/g, "") : "";
+                const isSelected = cleanedNum && waSelectedContacts.includes(cleanedNum);
+                return (
+                  <div
+                    key={`${rsvp.id || "rsvp"}-${idx}`}
+                    onClick={() => cleanedNum && toggleSelectContact(cleanedNum)}
+                    className={`flex items-center justify-between p-2 rounded border cursor-pointer transition-all ${
+                      isSelected
+                        ? "bg-green-50 border-green-400 shadow-2xs"
+                        : "bg-white border-transparent hover:border-[#E8E2D9]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <input
+                        type="checkbox"
+                        checked={!!isSelected}
+                        disabled={!cleanedNum}
+                        onChange={() => {}}
+                        className="w-4 h-4 rounded text-green-600 focus:ring-green-500 border-gray-300 pointer-events-none shrink-0"
+                      />
+                      <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-xs shrink-0">
+                        {(rsvp.guestName || "G").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="truncate">
+                        <p className="font-bold text-xs text-[#22201E] truncate">{rsvp.guestName || "Unnamed Guest"}</p>
+                        <p className="text-[10px] text-[#888178]">
+                          {rsvp.phone ? `+${cleanedNum}` : "No phone number recorded"} {rsvp.email && `• ${rsvp.email}`}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded shrink-0">
+                      {rsvp.attendance || "RSVP"}
+                    </span>
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            <div className="text-center py-10 text-gray-500">
+              <Users className="w-8 h-8 mx-auto mb-2 opacity-30 text-amber-600" />
+              <p className="text-xs font-semibold">No RSVPs matched "{waContactsSearch}"</p>
+            </div>
+          )}
+        </div>
+
+        <AlertDialogFooter className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[#E8E2D9] pt-3">
+          <div className="text-xs text-gray-600 font-bold self-start sm:self-center">
+            {waSelectedContacts.length} {waSelectedContacts.length === 1 ? "contact" : "contacts"} selected
+          </div>
+          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setWaContactsSearch("");
+                setWaContactsDialogOpen(false);
+              }}
+              className="text-xs px-4 py-2 bg-white border border-[#E8E2D9] hover:bg-gray-50 text-[#22201E] rounded transition-colors font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleAddSelectedContactsToBroadcast}
+              disabled={waSelectedContacts.length === 0}
+              className="inline-flex items-center justify-center rounded px-4 py-2 text-xs font-bold uppercase tracking-wider bg-green-600 hover:bg-green-700 text-white transition-all disabled:opacity-50 gap-1.5"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Add Selected ({waSelectedContacts.length})</span>
+            </button>
+          </div>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }

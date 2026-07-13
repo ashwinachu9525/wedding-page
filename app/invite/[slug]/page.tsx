@@ -331,7 +331,7 @@ function InviteLandingContent() {
       </main>
 
       {/* Free Plan Advertisement Banner — hidden for PRO accounts and demo users */}
-      {!invite.isProUser && invite.user?.email !== "demo@vivahaluxe.com" && !["rahul-priya-2026", "rahul-anjali", "arjun-meera-2026", "david-sarah-2026"].includes(invite.slug) && (
+      {!invite.isProUser && (invite as any).user?.email !== "demo@vivahaluxe.com" && !["rahul-priya-2026", "rahul-anjali", "arjun-meera-2026", "david-sarah-2026"].includes(invite.slug) && (
         <AdBanner slot="landing" className="max-w-4xl mx-auto my-8 px-4" />
       )}
 

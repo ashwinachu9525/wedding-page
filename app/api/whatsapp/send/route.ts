@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "WhatsApp integration requires PRO plan" }, { status: 403 });
     }
 
-    const { numbers, message } = await req.json();
+    const { numbers, message, imageUrl } = await req.json();
 
     if (!numbers || !Array.isArray(numbers) || numbers.length === 0 || !message) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
@@ -62,11 +62,44 @@ export async function POST(req: NextRequest) {
       ...(openWaKey ? { "X-API-Key": openWaKey } : {}),
     };
 
-    // Use WAHA's send endpoint
-    // Note: WAHA only allows letters, numbers, and hyphens in session names
-    const safeSessionId = user.whatsappSessionId.replace(/_/g, "-");
-    const sendUrl = `${openWaUrl}/api/sessions/${safeSessionId}/messages/send-text`;
-    
+    let activeSessionId = user.whatsappSessionId.replace(/_/g, "-");
+    try {
+      // Self-heal: resolve exact session UUID if currently stored as name
+      const checkRes = await fetch(`${openWaUrl}/api/sessions/${activeSessionId}`, { method: "GET", headers });
+      if (!checkRes.ok) {
+        const listRes = await fetch(`${openWaUrl}/api/sessions`, { method: "GET", headers });
+        if (listRes.ok) {
+          const sessions = await listRes.json();
+          if (Array.isArray(sessions)) {
+            const matched = sessions.find((s: any) => s.id === activeSessionId || s.name === activeSessionId || s.name === `user-${user.id}`);
+            if (matched) {
+              activeSessionId = matched.id;
+              await prisma.user.update({ where: { id: user.id }, data: { whatsappSessionId: activeSessionId } }).catch(() => {});
+            }
+          }
+        }
+      }
+
+      // Ensure session is started and active before sending
+      let isReady = false;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const sRes = await fetch(`${openWaUrl}/api/sessions/${activeSessionId}`, { method: "GET", headers, cache: "no-store" });
+        if (sRes.ok) {
+          const info = await sRes.json();
+          const rawStatus = (info.status || "").toUpperCase();
+          if (["WORKING", "CONNECTED", "READY", "AUTHENTICATED"].includes(rawStatus)) {
+            isReady = true;
+            break;
+          }
+        }
+        // If not ready, issue start command and wait 2 seconds
+        await fetch(`${openWaUrl}/api/sessions/${activeSessionId}/start`, { method: "POST", headers, cache: "no-store" }).catch(() => {});
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    } catch (e) {
+      // ignore precheck errors
+    }
+
     const results = [];
     let successCount = 0;
     
@@ -74,22 +107,77 @@ export async function POST(req: NextRequest) {
       const cleanNumber = number.replace(/[^0-9]/g, "");
       if (!cleanNumber) continue;
       
-      const chatId = `${cleanNumber}@c.us`;
+      const chatId = number.includes("@") ? number : `${cleanNumber}@c.us`;
       
       try {
-        const res = await fetch(sendUrl, {
+        const openWaPayload = imageUrl ? {
+          chatId: chatId,
+          url: imageUrl,
+          mimetype: imageUrl.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg",
+          filename: "wedding-invite.jpg",
+          caption: message,
+        } : {
+          chatId: chatId,
+          text: message,
+        };
+
+        const targetEndpoint = imageUrl
+          ? `${openWaUrl}/api/sessions/${activeSessionId}/messages/send-image`
+          : `${openWaUrl}/api/sessions/${activeSessionId}/messages/send-text`;
+
+        let res = await fetch(targetEndpoint, {
           method: "POST",
           headers,
-          body: JSON.stringify({
-            chatId: chatId,
-            text: message,
-          }),
+          body: JSON.stringify(openWaPayload),
         });
-        
+
+        // If failed due to inactive session, attempt to start session, wait 3 seconds, and retry
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "");
+          if (errText.includes("not active") || errText.includes("Start the session") || errText.includes("not running") || errText.includes("STOPPED")) {
+            await fetch(`${openWaUrl}/api/sessions/${activeSessionId}/start`, { method: "POST", headers }).catch(() => {});
+            await new Promise(r => setTimeout(r, 3000));
+            res = await fetch(targetEndpoint, {
+              method: "POST",
+              headers,
+              body: JSON.stringify(openWaPayload),
+            });
+          } else if (imageUrl && (res.status === 400 || res.status === 404 || res.status === 422)) {
+            // If OpenWA send-image failed with 400/404/422 (e.g. connected to legacy WAHA engine expecting nested file object or send-file)
+            console.warn(`[OpenWA] top-level send-image failed (${res.status}): ${errText}. Trying WAHA file object and send-file endpoints...`);
+            const wahaPayload = {
+              chatId: chatId,
+              file: {
+                url: imageUrl,
+                mimetype: imageUrl.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg",
+                filename: "wedding-invite.jpg",
+              },
+              caption: message,
+            };
+            res = await fetch(targetEndpoint, {
+              method: "POST",
+              headers,
+              body: JSON.stringify(wahaPayload),
+            });
+            if (!res.ok && (res.status === 404 || res.status === 400)) {
+              const fileEndpoint = `${openWaUrl}/api/sessions/${activeSessionId}/messages/send-file`;
+              res = await fetch(fileEndpoint, {
+                method: "POST",
+                headers,
+                body: JSON.stringify(wahaPayload),
+              });
+            }
+          }
+          if (!res.ok) {
+            const finalErr = await res.text().catch(() => "");
+            throw new Error(finalErr || errText || `Failed with HTTP ${res.status}`);
+          }
+        }
+
         if (res.ok) {
           successCount++;
           const data = await res.json().catch(() => ({}));
-          const messageId = data?.id || null;
+          const messageId = typeof data?.id === "string" ? data.id : (data?.id?._serialized || data?.id?.id || null);
           
           await prisma.whatsappLog.create({
             data: {
@@ -97,19 +185,13 @@ export async function POST(req: NextRequest) {
               recipient: number,
               messageId: messageId,
               content: message,
-              status: "PENDING", // Webhook will update to SENT/DELIVERED
+              status: "SENT", // Immediately mark as SENT on HTTP 200 from gateway
             }
           });
           
           results.push({ number, status: "success", messageId });
         } else {
           const err = await res.text();
-          
-          if (err.includes("not active") || err.includes("Start the session")) {
-            // Self-healing: try to start the session if it's inactive
-            await fetch(`${openWaUrl}/api/sessions/${safeSessionId}/start`, { method: "POST", headers }).catch(() => {});
-          }
-
           await prisma.whatsappLog.create({
             data: {
               userId: user.id,
@@ -123,17 +205,18 @@ export async function POST(req: NextRequest) {
           results.push({ number, status: "failed", error: err });
         }
       } catch (err: any) {
+        const errMsg = err?.message || "Request failed";
         await prisma.whatsappLog.create({
           data: {
             userId: user.id,
             recipient: number,
             content: message,
             status: "FAILED",
-            errorMessage: err.message || "Request failed",
+            errorMessage: errMsg,
           }
         });
         
-        results.push({ number, status: "failed", error: err.message || "Request failed" });
+        results.push({ number, status: "failed", error: errMsg });
       }
     }
 

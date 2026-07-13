@@ -5,7 +5,7 @@ import { formatHeadingText } from "@/lib/fonts";
 
 interface CoupleNameProps {
   names?: string;
-  headingType?: "script" | "serif" | "modern";
+  headingType?: "script" | "serif" | "modern" | "classic" | string | any;
   multiLine?: boolean;
   splitAmpersand?: boolean;
   className?: string;
