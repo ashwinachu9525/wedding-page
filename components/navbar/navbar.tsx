@@ -128,18 +128,18 @@ export function Navbar({
       
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 border-b border-current/10 shadow-lg px-6 py-6 flex flex-col gap-6 text-sm uppercase tracking-[0.2em] font-bold z-50 backdrop-blur-xl" style={{ backgroundColor: 'inherit' }}>
-          <a href="#story" onClick={() => setIsMobileMenuOpen(false)} className="hover:opacity-80 transition-opacity flex items-center gap-2">
-            <Heart className="w-4 h-4 opacity-50" /> Our Story
+        <div className="md:hidden absolute top-full left-0 right-0 border-b border-current/10 shadow-2xl px-6 py-6 flex flex-col gap-5 text-xs uppercase tracking-[0.2em] font-bold z-50 bg-[#141210]/95 text-[#FAF8F5] backdrop-blur-xl animate-in slide-in-from-top-2 duration-200">
+          <a href="#story" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#D4AF37] transition-colors py-1 flex items-center gap-2.5">
+            <Heart className="w-4 h-4 text-[#D4AF37]" /> Our Story
           </a>
-          <a href="#events" onClick={() => setIsMobileMenuOpen(false)} className="hover:opacity-80 transition-opacity flex items-center gap-2">
-            <Calendar className="w-4 h-4 opacity-50" /> Itinerary
+          <a href="#events" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#D4AF37] transition-colors py-1 flex items-center gap-2.5">
+            <Calendar className="w-4 h-4 text-[#D4AF37]" /> Itinerary
           </a>
-          <a href="#gallery" onClick={() => setIsMobileMenuOpen(false)} className="hover:opacity-80 transition-opacity flex items-center gap-2">
-            <ImageIcon className="w-4 h-4 opacity-50" /> Gallery
+          <a href="#gallery" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#D4AF37] transition-colors py-1 flex items-center gap-2.5">
+            <ImageIcon className="w-4 h-4 text-[#D4AF37]" /> Gallery
           </a>
-          <a href="#faq" onClick={() => setIsMobileMenuOpen(false)} className="hover:opacity-80 transition-opacity flex items-center gap-2">
-            <MapPin className="w-4 h-4 opacity-50" /> {enableAccommodations !== false ? "Accommodations & FAQ" : "Directions & FAQ"}
+          <a href="#faq" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#D4AF37] transition-colors py-1 flex items-center gap-2.5">
+            <MapPin className="w-4 h-4 text-[#D4AF37]" /> {enableAccommodations !== false ? "Accommodations & FAQ" : "Directions & FAQ"}
           </a>
         </div>
       )}

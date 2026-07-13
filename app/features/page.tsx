@@ -156,7 +156,7 @@ export default function FeaturesPage() {
         {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left pt-8 border-t border-[#E8E2D9]">
           {features.map((feature, idx) => (
-            <div key={idx} className="bg-white p-8 rounded-sm shadow-xl border border-[#E8E2D9] flex flex-col justify-start space-y-4 group hover:border-emerald-700 hover:shadow-2xl transition-all">
+            <div key={idx} className="bg-white p-6 sm:p-8 rounded-sm shadow-xl border border-[#E8E2D9] flex flex-col justify-start space-y-4 group hover:border-emerald-700 hover:shadow-2xl transition-all">
               <div className="flex items-center justify-between">
                 <div className="w-12 h-12 rounded-xs bg-[#FAF8F5] border border-[#E8E2D9] flex items-center justify-center group-hover:scale-110 transition-transform">
                   {feature.icon}

@@ -83,11 +83,11 @@ export function Hero({
 
       {/* Content Box */}
       {/* Content Box */}
-      <div className={`relative z-20 max-w-2xl mx-auto p-8 sm:p-12 text-center animate-fade-in ${
+      <div className={`relative z-20 w-[94%] sm:w-full max-w-2xl mx-auto p-5 sm:p-8 md:p-12 text-center animate-fade-in ${
         themeKey === "hindu_royal" ? "bg-[#2D0A0E]/95 border-[6px] border-double border-[#FF9933] shadow-2xl text-[#FAF8F5]" :
         themeKey === "arabic_royal" ? "bg-[#061B1C]/95 border-[6px] border-double border-[#E6C280] shadow-2xl text-[#FAF8F5]" :
         themeKey === "christian_royal" ? "bg-[#FAF9F6]/95 border-[6px] border-double border-[#B0C4DE] shadow-2xl text-[#2B3E50]" :
-        "text-white space-y-8"
+        "text-white space-y-6 sm:space-y-8"
       } rounded-sm relative overflow-hidden`}>
 
         {/* Motif decorations inside the card container */}

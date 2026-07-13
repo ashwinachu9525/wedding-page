@@ -210,7 +210,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#22201E] flex flex-col items-center justify-center p-4 text-[#FAF8F5]">
-      <div className="max-w-md w-full bg-[#1F1D1A] border border-white/10 p-8 sm:p-10 rounded-sm shadow-2xl space-y-6">
+      <div className="max-w-md w-full bg-[#1F1D1A] border border-white/10 p-6 sm:p-10 rounded-sm shadow-2xl space-y-6">
         <div className="text-center space-y-2">
           <div className="w-12 h-12 mx-auto rounded-full bg-[#FAF8F5]/10 flex items-center justify-center text-[#D4AF37]">
             <Lock className="w-6 h-6" />

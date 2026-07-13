@@ -141,7 +141,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-[#1F1D1A] flex flex-col items-center justify-center p-4 sm:p-8 text-[#FAF8F5] font-sans">
-      <div className="max-w-md w-full bg-[#2A2723] border border-[#D4AF37]/30 p-8 sm:p-10 rounded-sm shadow-2xl space-y-6">
+      <div className="max-w-md w-full bg-[#2A2723] border border-[#D4AF37]/30 p-6 sm:p-10 rounded-sm shadow-2xl space-y-6">
         <div className="text-center space-y-2">
           <div className="w-12 h-12 mx-auto rounded-full bg-[#D4AF37]/10 flex items-center justify-center text-[#D4AF37]">
             <Heart className="w-6 h-6 fill-[#D4AF37]" />

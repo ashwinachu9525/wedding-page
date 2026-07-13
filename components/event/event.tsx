@@ -105,7 +105,7 @@ export function EventSection({
           {events.map((ev, idx) => (
             <div
               key={idx}
-              className="p-8 rounded-sm bg-current/[0.04] border border-current/15 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-6"
+              className="p-5 sm:p-8 rounded-sm bg-current/[0.04] border border-current/15 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-6"
             >
               <div className="space-y-3">
                 <span className={`text-[10px] uppercase tracking-[0.2em] font-bold ${accentClass}`}>Function {idx + 1}</span>
@@ -127,7 +127,7 @@ export function EventSection({
 
                 <button
                   onClick={() => handleDownloadICS(ev)}
-                  className="w-full py-2 px-3 rounded-xs border border-current/20 hover:bg-current/10 text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors"
+                  className="w-full py-2 px-3 rounded-xs border border-current/20 hover:bg-current/10 text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-colors min-h-[44px]"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Add to Calendar (.ics)</span>
@@ -140,20 +140,20 @@ export function EventSection({
 
         {/* Accommodations & Directions Guide — only when venue info exists */}
         {hasVenue && (
-        <div className="p-8 sm:p-12 rounded-sm bg-current/5 border border-current/15 flex flex-col md:flex-row items-center justify-between gap-8 text-center md:text-left">
+        <div className="p-5 sm:p-8 md:p-12 rounded-sm bg-current/5 border border-current/15 flex flex-col md:flex-row items-center justify-between gap-6 sm:gap-8 text-center md:text-left w-full">
           <div className="space-y-2 max-w-xl">
             <span className={`text-[10px] uppercase tracking-[0.25em] font-bold ${accentClass}`}>{directionsHeader}</span>
             <h3 className="font-serif text-2xl sm:text-3xl font-light">{venueName}</h3>
             {venueAddress && <p className="text-xs opacity-80">{venueAddress}</p>}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 shrink-0">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 shrink-0 w-full md:w-auto">
             {mapUrl && (
             <a
               href={mapUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-6 py-3.5 rounded-xs text-xs uppercase tracking-widest font-bold shadow-md transition-all flex items-center justify-center gap-2 border border-current/30 hover:bg-current/10"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xs text-xs uppercase tracking-widest font-bold shadow-md transition-all flex items-center justify-center gap-2 border border-current/30 hover:bg-current/10 min-h-[44px]"
             >
               <MapPin className="w-4 h-4" />
               <span>Google Maps Navigation</span>
@@ -162,7 +162,7 @@ export function EventSection({
 
             <button
               onClick={onOpenRSVP}
-              className={`px-6 py-3.5 rounded-xs text-xs uppercase tracking-widest font-bold shadow-md transition-all flex items-center justify-center gap-2 ${buttonClass}`}
+              className={`w-full sm:w-auto px-6 py-3.5 rounded-xs text-xs uppercase tracking-widest font-bold shadow-md transition-all flex items-center justify-center gap-2 min-h-[44px] ${buttonClass}`}
             >
               <Send className="w-4 h-4" />
               <span>RSVP For Events</span>

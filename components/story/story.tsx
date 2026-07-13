@@ -234,16 +234,16 @@ export function Story({
 
       {/* Bride & Groom Lineage Cards — only when content exists */}
       {hasLineage && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 pt-4">
           {brideDetails?.trim() && (
-            <div className="p-8 bg-current/5 rounded-sm border border-current/15 text-center space-y-3 shadow-xs">
+            <div className="p-5 sm:p-8 bg-current/5 rounded-sm border border-current/15 text-center space-y-3 shadow-xs">
               <span className={`text-[10px] uppercase tracking-[0.25em] font-bold ${accentClass}`}>The Bride&apos;s Family</span>
               <h3 className="font-serif text-2xl font-light">The Bride&apos;s Lineage</h3>
               <p className="font-serif italic text-sm opacity-85 leading-relaxed">{brideDetails}</p>
             </div>
           )}
           {groomDetails?.trim() && (
-            <div className="p-8 bg-current/5 rounded-sm border border-current/15 text-center space-y-3 shadow-xs">
+            <div className="p-5 sm:p-8 bg-current/5 rounded-sm border border-current/15 text-center space-y-3 shadow-xs">
               <span className={`text-[10px] uppercase tracking-[0.25em] font-bold ${accentClass}`}>The Groom&apos;s Family</span>
               <h3 className="font-serif text-2xl font-light">The Groom&apos;s Lineage</h3>
               <p className="font-serif italic text-sm opacity-85 leading-relaxed">{groomDetails}</p>

@@ -57,7 +57,7 @@ export function RSVPModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-      <div className="relative w-full max-w-lg bg-[#1F1D1A] text-[#FAF8F5] rounded-sm border border-[#D4AF37]/50 p-8 sm:p-10 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-lg bg-[#1F1D1A] text-[#FAF8F5] rounded-sm border border-[#D4AF37]/50 p-5 sm:p-8 md:p-10 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
         <button
           onClick={() => onOpenChange(false)}
           className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 text-[#C4B7A6] hover:text-white transition-colors"
