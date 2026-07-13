@@ -57,6 +57,7 @@ import { DeleteAccountDialog } from "@/components/ui/delete-account-dialog";
 import { FontSelector } from "@/components/font-selector/font-selector";
 import { type StoryData, DEFAULT_STORY_DATA, STORY_QUOTES, parseStory } from "@/components/story/story";
 import { getPlayableMediaUrl } from "@/lib/utils";
+import { EnvelopeTemplate } from "@/components/envelope/Envelope";
 
 type ThemeKey =
   | "alabaster"
@@ -216,6 +217,8 @@ export default function AdminPage() {
   const [mapUrl, setMapUrl] = useState("https://maps.google.com/?q=Rambagh+Palace+Jaipur");
   const [enableAccommodations, setEnableAccommodations] = useState<boolean>(true);
   const [accommodationsTitle, setAccommodationsTitle] = useState<string>("Accommodations & Venue Directions");
+  const [enableEnvelope, setEnableEnvelope] = useState<boolean>(false);
+  const [envelopeTemplate, setEnvelopeTemplate] = useState<EnvelopeTemplate>("classic-gold");
   const [story, setStory] = useState("From college best friends to soulful life partners, our journey is filled with laughter, adventures, and unconditional devotion.");
   const [storyData, setStoryData] = useState<StoryData>({ ...DEFAULT_STORY_DATA });
   const [inviteTheme, setInviteTheme] = useState<ThemeKey>("velvet");
@@ -343,6 +346,8 @@ export default function AdminPage() {
             setMapUrl(inv.mapUrl || "");
             setEnableAccommodations(inv.enableAccommodations !== false);
             setAccommodationsTitle(inv.accommodationsTitle || "Accommodations & Venue Directions");
+            setEnableEnvelope(Boolean(inv.enableEnvelope));
+            setEnvelopeTemplate((inv.envelopeTemplate as EnvelopeTemplate) || "classic-gold");
             setStory(inv.story || "");
             // Hydrate structured story editor
             const parsedStory = parseStory(inv.story || "");
@@ -710,6 +715,8 @@ export default function AdminPage() {
       setMapUrl(inv.mapUrl || "https://maps.google.com");
       setEnableAccommodations(inv.enableAccommodations !== false);
       setAccommodationsTitle(inv.accommodationsTitle || "Accommodations & Venue Directions");
+      setEnableEnvelope(Boolean(inv.enableEnvelope));
+      setEnvelopeTemplate((inv.envelopeTemplate as EnvelopeTemplate) || "classic-gold");
       setStory(inv.story);
       // Hydrate structured story editor from preset
       const parsedPresetStory = parseStory(inv.story);
@@ -992,6 +999,8 @@ export default function AdminPage() {
       galleryJson: JSON.stringify(photosList.map((p) => p.src)),
       enableAccommodations,
       accommodationsTitle,
+      enableEnvelope,
+      envelopeTemplate,
     };
 
     try {
@@ -1659,6 +1668,50 @@ export default function AdminPage() {
                   </div>
                 </div>
 
+                {/* Envelope Configuration UI */}
+                <div className="p-4 bg-[#F6F3EE] rounded-sm border border-[#E4DDD3] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[#3D3A36]">
+                        Open Letter & Side Poppers Effect
+                      </label>
+                      <p className="text-[11px] text-[#7A746E] mt-0.5">
+                        Shows a beautiful envelope opening animation with confetti on the guest's first visit.
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={enableEnvelope}
+                        onChange={(e) => setEnableEnvelope(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-[#D1C9BE] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2F2C28]"></div>
+                    </label>
+                  </div>
+
+                  {enableEnvelope && (
+                    <div className="mt-2">
+                      <label className="block text-[11px] font-semibold text-[#55514C] mb-1">
+                        Envelope Template Design
+                      </label>
+                      <select
+                        value={envelopeTemplate}
+                        onChange={(e) => setEnvelopeTemplate(e.target.value as EnvelopeTemplate)}
+                        className="w-full bg-white border border-[#DCD5CB] px-3 py-2 text-xs rounded-xs font-medium"
+                      >
+                        <option value="classic-gold">Classic Gold</option>
+                        <option value="midnight-velvet">Midnight Velvet</option>
+                        <option value="pearl-white">Pearl White</option>
+                        <option value="emerald-green">Emerald Green</option>
+                        <option value="hindu-royal">Hindu Royal</option>
+                        <option value="christian-royal">Christian Royal</option>
+                        <option value="arabic-royal">Arabic Royal</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-4 bg-[#FAF8F5] p-4 rounded-xs border border-[#E8E2D9]">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4 text-[#9E8B73]" />
@@ -2126,7 +2179,7 @@ export default function AdminPage() {
                   Live Website Preview ({currentThemeObj.name})
                 </span>
                 <Link
-                  href={`/invite/${slugInput}?fontStyle=${inviteFontStyle}&enableAccommodations=${enableAccommodations}&accommodationsTitle=${encodeURIComponent(accommodationsTitle || "")}&splitCoupleNames=${splitCoupleNames}`}
+                  href={`/invite/${slugInput}?fontStyle=${inviteFontStyle}&enableAccommodations=${enableAccommodations}&accommodationsTitle=${encodeURIComponent(accommodationsTitle || "")}&splitCoupleNames=${splitCoupleNames}&envelope=${enableEnvelope}&envelopeTemplate=${envelopeTemplate}`}
                   target="_blank"
                   className="text-xs text-emerald-700 font-semibold hover:underline inline-flex items-center gap-1"
                 >
@@ -2136,7 +2189,7 @@ export default function AdminPage() {
               </div>
               <div className="flex-1 bg-gray-100 relative">
                 <iframe
-                  src={`/invite/${slugInput}?fontStyle=${inviteFontStyle}&enableAccommodations=${enableAccommodations}&accommodationsTitle=${encodeURIComponent(accommodationsTitle || "")}&splitCoupleNames=${splitCoupleNames}`}
+                  src={`/invite/${slugInput}?fontStyle=${inviteFontStyle}&enableAccommodations=${enableAccommodations}&accommodationsTitle=${encodeURIComponent(accommodationsTitle || "")}&splitCoupleNames=${splitCoupleNames}&envelope=${enableEnvelope}&envelopeTemplate=${envelopeTemplate}`}
                   className="w-full h-full border-none"
                   title="Live Landing Page Preview"
                   key={`${slugInput}-${inviteTheme}-${inviteFontStyle}-${enableAccommodations}-${splitCoupleNames}-${previewKey}`}

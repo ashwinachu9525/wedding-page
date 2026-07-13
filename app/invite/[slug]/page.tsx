@@ -16,6 +16,7 @@ import { FooterSection } from "@/components/footer/footer";
 import { RSVPModal } from "@/components/rsvp/rsvp-modal";
 import { WeddingJsonLd } from "@/components/seo/json-ld";
 import AdBanner from "@/components/AdBanner";
+import { Envelope, EnvelopeTemplate } from "@/components/envelope/Envelope";
 
 type ThemeKey =
   | "alabaster"
@@ -78,6 +79,8 @@ function InviteLandingContent() {
   const urlEnableAccommodations = searchParams ? searchParams.get("enableAccommodations") : null;
   const urlAccommodationsTitle = searchParams ? searchParams.get("accommodationsTitle") : null;
   const urlSplitCoupleNames = searchParams ? searchParams.get("splitCoupleNames") : null;
+  const urlEnableEnvelope = searchParams ? searchParams.get("envelope") : null;
+  const urlEnvelopeTemplate = searchParams ? searchParams.get("envelopeTemplate") : null;
 
   const slug = (params?.slug as string) || "rahul-priya-2026";
   const [invite, setInvite] = useState<InvitationData | null>(null);
@@ -220,12 +223,23 @@ function InviteLandingContent() {
     ? (parsedStory as StoryData).withRegards?.trim() || ""
     : "";
 
+  const effectiveEnableEnvelope = urlEnableEnvelope !== null
+    ? urlEnableEnvelope === "true"
+    : Boolean((invite as any).enableEnvelope);
+    
+  const effectiveEnvelopeTemplate = (urlEnvelopeTemplate || (invite as any).envelopeTemplate || "classic-gold") as EnvelopeTemplate;
+
   return (
-    <div
-      className={`invitation-container min-h-screen ${styles.bg} ${styles.text} overflow-x-hidden transition-colors duration-500`}
-      style={fontStyles}
-      data-heading-type={fontPairing.headingType || "serif"}
+    <Envelope 
+      enableEnvelope={effectiveEnableEnvelope} 
+      template={effectiveEnvelopeTemplate}
+      guestName={guest}
     >
+      <div
+        className={`invitation-container min-h-screen ${styles.bg} ${styles.text} overflow-x-hidden transition-colors duration-500`}
+        style={fontStyles}
+        data-heading-type={fontPairing.headingType || "serif"}
+      >
       {/* SEO Structured Data */}
       <WeddingJsonLd
         coupleNames={invite.coupleNames}
@@ -339,7 +353,8 @@ function InviteLandingContent() {
         buttonClass={styles.buttonBg}
         slug={invite.slug}
       />
-    </div>
+      </div>
+    </Envelope>
   );
 }
 

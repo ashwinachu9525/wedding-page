@@ -88,6 +88,8 @@ export async function POST(req: Request) {
       enableAccommodations,
       accommodationsTitle,
       splitCoupleNames,
+      enableEnvelope,
+      envelopeTemplate,
     } = body;
 
     if (!slug) {
@@ -133,6 +135,8 @@ export async function POST(req: Request) {
             ...(enableAccommodations !== undefined ? { enableAccommodations: Boolean(enableAccommodations) } : {}),
             ...(accommodationsTitle !== undefined ? { accommodationsTitle } : {}),
             ...(splitCoupleNames !== undefined ? { splitCoupleNames: Boolean(splitCoupleNames) } : {}),
+            ...(enableEnvelope !== undefined ? { enableEnvelope: Boolean(enableEnvelope) } : {}),
+            ...(envelopeTemplate !== undefined ? { envelopeTemplate } : {}),
           },
           create: {
             slug,
@@ -159,6 +163,8 @@ export async function POST(req: Request) {
             enableAccommodations: enableAccommodations !== undefined ? Boolean(enableAccommodations) : true,
             accommodationsTitle: accommodationsTitle || "Accommodations & Venue Directions",
             splitCoupleNames: Boolean(splitCoupleNames),
+            enableEnvelope: enableEnvelope !== undefined ? Boolean(enableEnvelope) : false,
+            envelopeTemplate: envelopeTemplate || "classic-gold",
           },
         });
         return NextResponse.json(saved);

@@ -70,6 +70,8 @@ model Invitation {
   enableAccommodations Boolean          @default(true)
   accommodationsTitle  String?          @default("Accommodations & Venue Directions")
   splitCoupleNames     Boolean          @default(false)
+  enableEnvelope       Boolean          @default(false)
+  envelopeTemplate     String           @default("classic-gold")
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
   rsvps                Rsvp[]

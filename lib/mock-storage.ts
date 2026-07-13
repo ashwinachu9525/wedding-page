@@ -26,6 +26,8 @@ export interface InvitationData {
   enableAccommodations?: boolean;
   accommodationsTitle?: string;
   splitCoupleNames?: boolean;
+  enableEnvelope?: boolean;
+  envelopeTemplate?: string;
 }
 
 const DEFAULT_INVITATIONS: InvitationData[] = [
@@ -218,6 +220,8 @@ export function saveOrUpdateInvitation(data: Partial<InvitationData> & { slug: s
       enableAccommodations: data.enableAccommodations !== undefined ? data.enableAccommodations : true,
       accommodationsTitle: data.accommodationsTitle || "Accommodations & Venue Directions",
       splitCoupleNames: Boolean(data.splitCoupleNames),
+      enableEnvelope: Boolean(data.enableEnvelope),
+      envelopeTemplate: data.envelopeTemplate || "classic-gold",
     };
     memoryInvitations.push(newInv);
     return newInv;

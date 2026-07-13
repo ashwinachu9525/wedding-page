@@ -31,7 +31,8 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: "Create Custom WhatsApp Wedding Invites in Minutes with VivahaLuxe!",
     description: "Welcome to VivahaLuxe! 💍 In this quick tutorial, we demonstrate how easy it is to create and send stunning, personalized digital wedding invitations to your guests directly via WhatsApp.Skip the manual typing and let our platform do the heavy lifting! Watch how you can effortlessly select royal themes, input guest details, and generate customized WhatsApp messages with unique, dynamic invitation links in just a few clicks.",
     content: "Yes! When deployed on Vercel, simply enter your custom domain in the platform's domain configuration setting box. When you click send on WhatsApp, it automatically formats your exact live domain.",
-    videoUrl: "https://www.youtube.com/embed/sAAO1mIHzPI"
+    videoUrl: "https://www.youtube.com/embed/F_N3T2V7xxc"
+
   },
   {
     id: "manage-rsvps",
