@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { PwaRegister } from "@/components/pwa/pwa-register";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,9 +16,30 @@ const geistMono = Geist_Mono({
 
 const ADSENSE_PUBLISHER_ID = process.env.NEXT_PUBLIC_ADSENSE_PUBLISHER_ID || "";
 
+export const viewport: Viewport = {
+  themeColor: "#D4AF37",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "VivahaLuxe • Royal Wedding Invitations & SEO Celebrations",
   description: "Next-generation autonomous AI wedding invitation platform with custom SEO slugs and dynamic themes.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "VivahaLuxe",
+  },
+  formatDetection: {
+    telephone: true,
+  },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
   verification: {
     google: "ja7oYZW32sasXoMUdxESs9pMCi_gHmU5SGUWN37r0aQ",
   },
@@ -53,6 +75,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         {children}
+        <PwaRegister />
         <Toaster position="top-right" richColors closeButton expand theme="light" />
       </body>
     </html>

@@ -1,0 +1,23 @@
+{
+  "name": "VivahaLuxe • Royal Wedding Studio & Invitations",
+  "short_name": "VivahaLuxe",
+  "description": "Next-generation autonomous AI wedding invitation platform with custom SEO slugs and dynamic themes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1F1D1A",
+  "theme_color": "#D4AF37",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512 any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

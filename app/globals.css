@@ -109,4 +109,45 @@ body {
   font-size: calc(1.35rem * var(--heading-scale, 1.15)) !important;
 }
 
+/* ── PWA COMPACT STANDALONE & SAFE-AREA OPTIMIZATIONS ─────────────────────── */
+@supports (padding: max(0px)) {
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top), 1rem);
+  }
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+  }
+}
 
+/* When launched directly from mobile Home Screen (Standalone PWA mode) */
+@media (display-mode: standalone) {
+  body {
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Make header and navigation ultra-compact inside standalone PWA */
+  header,
+  .sticky {
+    padding-top: max(env(safe-area-inset-top), 0.5rem) !important;
+  }
+
+  /* Ensure bottom modals, audio controllers, and action buttons respect home bar */
+  .fixed.bottom-0,
+  footer {
+    padding-bottom: max(env(safe-area-inset-bottom), 1rem) !important;
+  }
+
+  /* Compact spacing for cards and sections when inside standalone app */
+  main {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+}
+
+body.pwa-standalone header {
+  padding-top: max(env(safe-area-inset-top), 0.5rem) !important;
+}
+body.pwa-standalone .fixed.bottom-0 {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem) !important;
+}
