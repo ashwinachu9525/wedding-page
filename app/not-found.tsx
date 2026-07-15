@@ -1,29 +1,7 @@
-"use client";
-
-import { useEffect } from "react";
 import Link from "next/link";
-import { AlertTriangle, Home, RefreshCw, UserPlus } from "lucide-react";
+import { Search, Home, MessageCircle, UserPlus } from "lucide-react";
 
-export default function Error({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
-  useEffect(() => {
-    // Log the error to our super admin system
-    fetch("/api/super-admin/system-errors", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: error.message || "Unknown error",
-        stack: error.stack,
-        path: typeof window !== "undefined" ? window.location.pathname : "unknown",
-      }),
-    }).catch(console.error); // Ignore failures in error logging to avoid loops
-  }, [error]);
-
+export default function NotFound() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#22201E] font-sans flex flex-col selection:bg-emerald-900 selection:text-white">
       {/* Navigation Bar */}
@@ -59,30 +37,33 @@ export default function Error({
         </div>
       </header>
 
-      {/* Main Error Content */}
+      {/* Main 404 Content */}
       <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="bg-white border border-[#E8E2D9] rounded-2xl shadow-xl p-8 max-w-md w-full">
-          <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertTriangle className="w-8 h-8" />
+        <div className="bg-white border border-[#E8E2D9] rounded-2xl shadow-xl p-8 max-w-md w-full animate-in fade-in zoom-in duration-300">
+          <div className="w-16 h-16 bg-[#F5F2EC] text-[#888178] rounded-full flex items-center justify-center mx-auto mb-6">
+            <Search className="w-8 h-8" />
           </div>
-          <h1 className="text-3xl font-serif text-[#22201E] mb-3">Oops!</h1>
+          
+          <h1 className="text-4xl font-serif text-[#22201E] mb-2">404</h1>
+          <h2 className="text-xl font-medium text-[#55514C] mb-4">Page Not Found</h2>
+          
           <p className="text-[#888178] mb-8 leading-relaxed">
-            Something went wrong while loading this page. Our technical team has been notified and is looking into the issue.
+            The page or invitation you are looking for doesn't exist or may have been moved.
           </p>
           
           <div className="flex flex-col gap-3">
-            <button
-              onClick={() => reset()}
-              className="w-full bg-[#22201E] hover:bg-[#3d3a36] text-white px-6 py-3 rounded-full text-sm font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-            >
-              <RefreshCw className="w-4 h-4" /> Try Again
-            </button>
-            
             <Link
               href="/"
-              className="w-full bg-white hover:bg-gray-50 border border-[#E8E2D9] text-[#22201E] px-6 py-3 rounded-full text-sm font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-[#22201E] hover:bg-[#3d3a36] text-white px-6 py-3 rounded-full text-sm font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
             >
               <Home className="w-4 h-4" /> Return Home
+            </Link>
+            
+            <Link
+              href="/support"
+              className="w-full bg-white hover:bg-gray-50 border border-[#E8E2D9] text-[#22201E] px-6 py-3 rounded-full text-sm font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+            >
+              Contact Support
             </Link>
           </div>
         </div>

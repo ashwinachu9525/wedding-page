@@ -87,15 +87,6 @@ export default function VivahaLuxeHomepage() {
 
   return (
     <div className="min-h-screen bg-[#FAF8F5] text-[#22201E] font-sans flex flex-col justify-between selection:bg-emerald-900 selection:text-white">
-      {/* Top Banner */}
-      <div className="bg-gradient-to-r from-[#112A21] via-[#1A3A2F] to-[#112A21] text-white py-3 px-4 text-center text-xs sm:text-sm font-medium tracking-wide flex items-center justify-center gap-2 shadow-sm">
-        <Sparkles className="w-4 h-4 text-[#D4AF37] shrink-0" />
-        <span>VivahaLuxe v2.0 Live: AI Card Scanner, 18+ Custom Royal Fonts &amp; Safe PostgreSQL Storage!</span>
-        <Link href="/support" className="underline font-bold text-[#D4AF37] ml-2 hidden sm:inline flex items-center gap-1">
-          <span>Need Help? Chat +91 7012406453</span>
-        </Link>
-      </div>
-
       {/* Navigation Bar */}
       <header className="border-b border-[#E8E2D9] bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">

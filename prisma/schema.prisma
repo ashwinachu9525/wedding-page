@@ -153,3 +153,15 @@ model SystemError {
 
   @@map("system_errors")
 }
+
+model SystemConfig {
+  id               String   @id @default("global")
+  maintenanceMode  Boolean  @default(false)
+  maintenanceText  String?
+  maintenanceDate  String?
+  alertEnabled     Boolean  @default(false)
+  alertText        String?
+  updatedAt        DateTime @updatedAt
+
+  @@map("system_config")
+}

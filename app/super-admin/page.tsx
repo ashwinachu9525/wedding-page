@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { WeddingDatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 import {
   ShieldCheck,
@@ -40,6 +41,7 @@ interface UserRecord {
   id: string;
   name: string;
   username: string;
+  invitationSlug?: string;
   email: string;
   role: "USER" | "SUPER_ADMIN";
   status: "ACTIVE" | "SUSPENDED";
@@ -71,6 +73,10 @@ export default function SuperAdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeDirectoryTab, setActiveDirectoryTab] = useState<"overview" | "registered" | "demo" | "print-orders" | "pro-subscriptions" | "email-logs" | "system-errors">("overview");
   const [announcement, setAnnouncement] = useState("🎉 VivahaLuxe v2.0 Live: 12 New Royal Themes & CockroachDB Prisma Storage Engine deployed!");
+  const [alertEnabled, setAlertEnabled] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceText, setMaintenanceText] = useState("Scheduled Maintenance: The platform will be down for upgrades.");
+  const [maintenanceDate, setMaintenanceDate] = useState("");
   const [printOrders, setPrintOrders] = useState<any[]>([]);
   const [emailLogs, setEmailLogs] = useState<any[]>([]);
   const [emailLogsLoading, setEmailLogsLoading] = useState(false);
@@ -121,7 +127,7 @@ export default function SuperAdminPage() {
     if (!isAuthenticated) return;
 
     // Load real registered users from DB
-    fetch("/api/super-admin/users")
+    fetch("/api/super-admin/users", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
@@ -165,6 +171,20 @@ export default function SuperAdminPage() {
 
     refreshSystemErrors();
     refreshSystemStats();
+
+    // Fetch Maintenance Config from DB
+    fetch("/api/system-config")
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.config) {
+          setMaintenanceMode(data.config.maintenanceMode);
+          if (data.config.maintenanceText) setMaintenanceText(data.config.maintenanceText);
+          if (data.config.maintenanceDate) setMaintenanceDate(data.config.maintenanceDate);
+          setAlertEnabled(data.config.alertEnabled);
+          if (data.config.alertText) setAnnouncement(data.config.alertText);
+        }
+      })
+      .catch(console.error);
   }, [isAuthenticated]);
 
   const refreshSystemStats = async () => {
@@ -386,10 +406,20 @@ export default function SuperAdminPage() {
     );
   };
 
-  const handleDeleteUser = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to permanently delete account "${name}"?`)) {
-      setUsersList((prev) => prev.filter((u) => u.id !== id));
-      toast.error(`Account "${name}" permanently deleted.`);
+  const handleDeleteUser = async (id: string, name: string) => {
+    if (confirm(`Are you sure you want to permanently delete account "${name}"? This will also delete all their invitations, RSVPs, and WhatsApp logs.`)) {
+      try {
+        const res = await fetch(`/api/super-admin/users?userId=${id}`, {
+          method: "DELETE",
+        });
+        
+        if (!res.ok) throw new Error("Failed to delete user");
+
+        setUsersList((prev) => prev.filter((u) => u.id !== id));
+        toast.error(`Account "${name}" and all associated data permanently deleted.`);
+      } catch (e) {
+        toast.error("Failed to delete user on server.");
+      }
     }
   };
 
@@ -409,9 +439,57 @@ export default function SuperAdminPage() {
     }
   };
 
-  const handleBroadcastBanner = (e: React.FormEvent) => {
+  const handleToggleAlert = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Global Banner Broadcast updated across all client interfaces!");
+    const newMode = !alertEnabled;
+    setAlertEnabled(newMode);
+    
+    try {
+      await fetch("/api/system-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          maintenanceMode,
+          maintenanceText,
+          maintenanceDate,
+          alertEnabled: newMode,
+          alertText: announcement
+        })
+      });
+      window.dispatchEvent(new Event("vivaha_maintenance_updated"));
+      toast.success(newMode ? "Global Alert activated!" : "Global Alert disabled!");
+    } catch (error) {
+      toast.error("Failed to update alert settings.");
+      setAlertEnabled(!newMode);
+    }
+  };
+
+  const handleToggleMaintenance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newMode = !maintenanceMode;
+    setMaintenanceMode(newMode);
+    
+    // Save to database via API
+    try {
+      await fetch("/api/system-config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          maintenanceMode: newMode,
+          maintenanceText,
+          maintenanceDate,
+          alertEnabled,
+          alertText: announcement
+        })
+      });
+      // Dispatch event so same-window layouts pick up the change immediately
+      window.dispatchEvent(new Event("vivaha_maintenance_updated"));
+      toast.success(newMode ? "Maintenance mode activated globally in Database!" : "Maintenance mode disabled globally!");
+    } catch (error) {
+      toast.error("Failed to update maintenance settings in database.");
+      // Revert optimism
+      setMaintenanceMode(!newMode);
+    }
   };
 
   const handleAddUser = (e: React.FormEvent) => {
@@ -538,9 +616,33 @@ export default function SuperAdminPage() {
           </div>
         </div>
 
+        {/* Maintenance Window Banner Display */}
+        {maintenanceMode && (
+          <div className="bg-red-950/80 border border-red-900/50 rounded-sm p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg animate-in fade-in slide-in-from-top-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-red-900/50 p-2 rounded-full shrink-0">
+                <AlertCircle className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-red-400 font-bold text-sm uppercase tracking-wider">Maintenance Window Active</h3>
+                <p className="text-red-200/80 text-xs mt-0.5">
+                  {maintenanceText}
+                  {maintenanceDate && ` on ${new Date(maintenanceDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setMaintenanceMode(false)}
+              className="px-4 py-2 bg-red-900/50 hover:bg-red-900 text-red-100 text-xs uppercase tracking-widest rounded-xs transition-all font-bold whitespace-nowrap self-end sm:self-auto"
+            >
+              Disable Mode
+            </button>
+          </div>
+        )}
+
         {/* Global Banner Broadcast Control */}
         <div className="bg-gray-900 border border-gray-800 p-6 rounded-sm shadow-md">
-          <form onSubmit={handleBroadcastBanner} className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+          <form onSubmit={handleToggleAlert} className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
             <div className="flex-1 space-y-1">
               <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-400">
                 <Bell className="w-4 h-4" />
@@ -555,9 +657,46 @@ export default function SuperAdminPage() {
             </div>
             <button
               type="submit"
-              className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-6 py-2.5 rounded-xs text-xs uppercase tracking-widest shrink-0 transition-all shadow-md self-end sm:self-auto"
+              className={`${alertEnabled ? 'bg-gray-700 hover:bg-gray-600' : 'bg-amber-600 hover:bg-amber-500'} text-white font-bold px-6 py-2.5 rounded-xs text-xs uppercase tracking-widest shrink-0 transition-all shadow-md self-end sm:self-auto`}
             >
-              Broadcast Banner Update
+              {alertEnabled ? 'Disable Alert' : 'Broadcast Alert'}
+            </button>
+          </form>
+        </div>
+
+        {/* Maintenance Window Control */}
+        <div className="bg-gray-900 border border-gray-800 p-6 rounded-sm shadow-md">
+          <form onSubmit={handleToggleMaintenance} className="flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-4">
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1 sm:col-span-2">
+                <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-red-400">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>Maintenance Window Control</span>
+                </label>
+                <input
+                  type="text"
+                  value={maintenanceText}
+                  onChange={(e) => setMaintenanceText(e.target.value)}
+                  placeholder="Enter maintenance reason/message..."
+                  className="w-full bg-gray-950 border border-gray-800 px-4 py-2.5 text-xs rounded-xs text-white focus:outline-hidden focus:border-red-500"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400">Date</label>
+                <div className="pt-1">
+                  <WeddingDatePicker 
+                    value={maintenanceDate} 
+                    onChange={(dateStr) => setMaintenanceDate(dateStr)} 
+                    placeholder="Select maintenance date"
+                  />
+                </div>
+              </div>
+            </div>
+            <button
+              type="submit"
+              className={`${maintenanceMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-red-600 hover:bg-red-500'} text-white font-bold px-6 py-2.5 rounded-xs text-xs uppercase tracking-widest shrink-0 transition-all shadow-md self-end sm:self-auto h-fit`}
+            >
+              {maintenanceMode ? 'Disable Maintenance' : 'Activate Maintenance'}
             </button>
           </form>
         </div>
@@ -951,8 +1090,8 @@ export default function SuperAdminPage() {
                     <tr key={u.id} className="hover:bg-gray-800/40 transition-colors">
                       <td className="py-4 px-4 font-bold text-white">{u.name}</td>
                       <td className="py-4 px-4 font-mono text-emerald-400">
-                        <Link href={`/invite/${u.username}`} target="_blank" className="hover:underline flex items-center gap-1">
-                          <span>/invite/{u.username}</span>
+                        <Link href={`/invite/${u.invitationSlug || u.username}`} target="_blank" className="hover:underline flex items-center gap-1">
+                          <span>/invite/{u.invitationSlug || u.username}</span>
                           <ExternalLink className="w-3 h-3" />
                         </Link>
                       </td>
