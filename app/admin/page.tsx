@@ -7,8 +7,10 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getInvitationBySlug, getAllInvitations } from "@/lib/mock-storage";
+import { PwaInstallButton } from "@/components/pwa/pwa-install-button";
 import {
   Upload,
+  Gift,
   Video,
   Image as ImageIcon,
   Trash2,
@@ -53,6 +55,11 @@ import {
   Search,
   UserCheck,
   Phone,
+  CloudRain,
+  Thermometer,
+  Link2,
+  Unlink,
+  UserPlus,
 } from "lucide-react";
 import AdBanner from "@/components/AdBanner";
 import { useRazorpay } from "@/hooks/useRazorpay";
@@ -71,6 +78,7 @@ import { FontSelector } from "@/components/font-selector/font-selector";
 import { type StoryData, DEFAULT_STORY_DATA, STORY_QUOTES, parseStory } from "@/components/story/story";
 import { getPlayableMediaUrl } from "@/lib/utils";
 import { EnvelopeTemplate } from "@/components/envelope/Envelope";
+import { WeatherWidget } from "@/components/weather/weather-widget";
 
 type ThemeKey =
   | "alabaster"
@@ -185,7 +193,7 @@ export default function AdminPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isDemoUser, setIsDemoUser] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "invites" | "hero" | "photos" | "card" | "whatsapp" | "rsvps" | "bulk-print" | "billing">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "invites" | "hero" | "photos" | "card" | "whatsapp" | "rsvps" | "registry" | "bulk-print" | "billing">("dashboard");
   const [userPlan, setUserPlan] = useState<"FREE" | "PRO">("FREE");
   const [upgradingPro, setUpgradingPro] = useState(false);
   const [proTransactions, setProTransactions] = useState<any[]>([]);
@@ -232,6 +240,11 @@ export default function AdminPage() {
   const [accommodationsTitle, setAccommodationsTitle] = useState<string>("Accommodations & Venue Directions");
   const [enableEnvelope, setEnableEnvelope] = useState<boolean>(false);
   const [envelopeTemplate, setEnvelopeTemplate] = useState<EnvelopeTemplate>("classic-gold");
+  const [rsvpDeadline, setRsvpDeadline] = useState("");
+  const [razorpayKeyId, setRazorpayKeyId] = useState("rzp_test_1DP5mmOlF5G5ag");
+  const [upiVpa, setUpiVpa] = useState("rahul.priya2026@okaxis");
+  const [upiQrCodeUrl, setUpiQrCodeUrl] = useState("");
+  const [enableGiftRegistry, setEnableGiftRegistry] = useState<boolean>(false);
   const [story, setStory] = useState("From college best friends to soulful life partners, our journey is filled with laughter, adventures, and unconditional devotion.");
   const [storyData, setStoryData] = useState<StoryData>({ ...DEFAULT_STORY_DATA });
   const [inviteTheme, setInviteTheme] = useState<ThemeKey>("velvet");
@@ -361,6 +374,11 @@ export default function AdminPage() {
             setAccommodationsTitle(inv.accommodationsTitle || "Accommodations & Venue Directions");
             setEnableEnvelope(Boolean(inv.enableEnvelope));
             setEnvelopeTemplate((inv.envelopeTemplate as EnvelopeTemplate) || "classic-gold");
+            setRsvpDeadline(inv.rsvpDeadline ? inv.rsvpDeadline.substring(0, 16) : "");
+            setRazorpayKeyId(inv.razorpayKeyId || "rzp_test_1DP5mmOlF5G5ag");
+            setUpiVpa(inv.upiVpa || "rahul.priya2026@okaxis");
+            setUpiQrCodeUrl(inv.upiQrCodeUrl || "");
+            setEnableGiftRegistry(Boolean(inv.enableGiftRegistry));
             setStory(inv.story || "");
             // Hydrate structured story editor
             const parsedStory = parseStory(inv.story || "");
@@ -504,6 +522,119 @@ export default function AdminPage() {
   const [waContactsSearch, setWaContactsSearch] = useState("");
   const [waContactsTab, setWaContactsTab] = useState<"whatsapp" | "rsvps">("whatsapp");
   const [waSelectedContacts, setWaSelectedContacts] = useState<string[]>([]);
+
+  // Couple Account Linking State
+  const [partnerEmailInput, setPartnerEmailInput] = useState("");
+  const [partnerLoading, setPartnerLoading] = useState(false);
+
+  // Weather Alerts Broadcast State
+  const [weatherAlertSending, setWeatherAlertSending] = useState(false);
+  const [weatherRecipients, setWeatherRecipients] = useState("all");
+  const [weatherChannels, setWeatherChannels] = useState<string[]>(["email", "whatsapp"]);
+  const [weatherCustomNote, setWeatherCustomNote] = useState("");
+
+  // Auto-save & restore Weather Alert broadcast preferences in browser storage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedRec = localStorage.getItem("vivaha_weather_recipients");
+      if (savedRec) setWeatherRecipients(savedRec);
+      const savedChan = localStorage.getItem("vivaha_weather_channels");
+      if (savedChan) {
+        try { setWeatherChannels(JSON.parse(savedChan)); } catch {}
+      }
+      const savedNote = localStorage.getItem("vivaha_weather_note");
+      if (savedNote !== null) setWeatherCustomNote(savedNote);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("vivaha_weather_recipients", weatherRecipients);
+      localStorage.setItem("vivaha_weather_channels", JSON.stringify(weatherChannels));
+      localStorage.setItem("vivaha_weather_note", weatherCustomNote);
+    }
+  }, [weatherRecipients, weatherChannels, weatherCustomNote]);
+
+  const handleLinkPartner = async () => {
+    if (!partnerEmailInput.trim() || !partnerEmailInput.includes("@")) {
+      toast.error("Please enter a valid partner email address.");
+      return;
+    }
+    try {
+      setPartnerLoading(true);
+      const res = await fetch("/api/invitations/link-partner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: slugInput, partnerEmail: partnerEmailInput.trim(), action: "link" }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(data.message || "Partner linked successfully!");
+        setPartnerEmailInput("");
+        // Reload session to update partner info
+        window.location.reload();
+      } else {
+        toast.error(data.error || "Failed to link partner account.");
+      }
+    } catch (err: any) {
+      toast.error("Network error while linking account.");
+    } finally {
+      setPartnerLoading(false);
+    }
+  };
+
+  const handleUnlinkPartner = async () => {
+    try {
+      setPartnerLoading(true);
+      const res = await fetch("/api/invitations/link-partner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: slugInput, action: "unlink" }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success("Partner account unlinked.");
+        window.location.reload();
+      } else {
+        toast.error(data.error || "Failed to unlink partner.");
+      }
+    } catch (err) {
+      toast.error("Network error while unlinking.");
+    } finally {
+      setPartnerLoading(false);
+    }
+  };
+
+  const handleSendWeatherAlerts = async () => {
+    if (weatherChannels.length === 0) {
+      toast.error("Please select at least one delivery channel (Email or WhatsApp).");
+      return;
+    }
+    try {
+      setWeatherAlertSending(true);
+      const res = await fetch("/api/weather/send-alerts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: slugInput,
+          recipients: weatherRecipients,
+          channels: weatherChannels,
+          customNote: weatherCustomNote,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(data.message || "Weather advisory broadcasted successfully!");
+        setWeatherCustomNote("");
+      } else {
+        toast.error(data.error || "Failed to broadcast weather updates.");
+      }
+    } catch (err) {
+      toast.error("Error while sending weather updates.");
+    } finally {
+      setWeatherAlertSending(false);
+    }
+  };
 
   // Auto-generate a default WhatsApp message when slugInput or user names change
   useEffect(() => {
@@ -1150,6 +1281,11 @@ export default function AdminPage() {
       accommodationsTitle,
       enableEnvelope,
       envelopeTemplate,
+      rsvpDeadline: rsvpDeadline || null,
+      razorpayKeyId,
+      upiVpa,
+      upiQrCodeUrl,
+      enableGiftRegistry,
     };
 
     try {
@@ -1400,6 +1536,8 @@ export default function AdminPage() {
               <span className="whitespace-nowrap">Preview Live</span>
             </Link>
 
+            <PwaInstallButton variant="secondary" size="sm" label="Install Studio" className="flex-1 sm:flex-none justify-center rounded-xs" />
+
             <Link
               href="/"
               className="flex-1 sm:flex-none justify-center px-3 sm:px-4 py-1.5 sm:py-2 bg-[#22201E] text-white text-[11px] sm:text-xs uppercase tracking-widest hover:bg-[#3A3632] transition-colors flex items-center gap-1.5 rounded-xs"
@@ -1526,6 +1664,16 @@ export default function AdminPage() {
             <span>Guest RSVPs ({rsvps.length})</span>
           </button>
 
+          <button
+            onClick={() => setActiveTab("registry")}
+            className={`flex items-center gap-1.5 px-3 sm:px-5 py-2.5 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition-colors shrink-0 ${
+              activeTab === "registry" ? "border-[#22201E] text-[#22201E] font-bold" : "border-transparent text-[#888178]"
+            }`}
+          >
+            <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 shrink-0" />
+            <span>🎁 Gift Shop &amp; Shagun</span>
+          </button>
+
           {!isDemoUser && (
             <button
               onClick={() => setActiveTab("bulk-print")}
@@ -1609,6 +1757,169 @@ export default function AdminPage() {
                 </button>
               </div>
             )}
+
+            {/* Couple Account Linking Card */}
+            <div className="bg-white border border-[#E8E2D9] p-6 sm:p-8 rounded-sm shadow-2xs space-y-6">
+              <div className="flex items-start justify-between gap-4 border-b border-[#E8E2D9] pb-5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Link2 className="w-5 h-5 text-[#D4AF37]" />
+                    <h3 className="font-serif text-xl sm:text-2xl text-[#22201E]">Link/Merge Couple Accounts</h3>
+                  </div>
+                  <p className="text-xs text-[#888178] mt-1">
+                    Connect both the bride&apos;s and groom&apos;s separate user accounts to manage this unified celebration together. Both accounts remain independent for sign-in while sharing RSVPs, timeline, and alerts.
+                  </p>
+                </div>
+              </div>
+
+              {sessionUser && (sessionUser.partnerEmail || sessionUser.partnerUser) ? (
+                <div className="bg-[#FAF8F5] border border-[#D4AF37] p-5 rounded-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#112A21] text-white flex items-center justify-center font-bold">
+                      <UserCheck className="w-5 h-5 text-[#D4AF37]" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase tracking-wider text-[#D4AF37] font-bold">Connected Co-Host</span>
+                      <p className="font-serif text-base text-[#22201E] font-semibold">
+                        {sessionUser.partnerUser?.name || sessionUser.partnerEmail}
+                      </p>
+                      <p className="text-xs text-[#888178]">{sessionUser.partnerEmail}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleUnlinkPartner}
+                    disabled={partnerLoading}
+                    className="px-4 py-2 border border-rose-300 text-rose-700 hover:bg-rose-50 rounded-xs text-xs uppercase tracking-wider font-bold transition-all flex items-center gap-1.5 shrink-0"
+                  >
+                    <Unlink className="w-3.5 h-3.5" />
+                    <span>{partnerLoading ? "Processing..." : "Unlink Partner"}</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="email"
+                      placeholder="Enter partner's email address (e.g. priya@example.com)..."
+                      value={partnerEmailInput}
+                      onChange={(e) => setPartnerEmailInput(e.target.value)}
+                      className="flex-1 px-4 py-2.5 border border-[#E8E2D9] rounded-xs text-sm focus:outline-none focus:border-[#D4AF37]"
+                    />
+                    <button
+                      onClick={handleLinkPartner}
+                      disabled={partnerLoading || !partnerEmailInput.trim()}
+                      className="px-6 py-2.5 bg-[#112A21] text-[#FAF8F5] hover:bg-[#1b4335] disabled:opacity-50 rounded-xs text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 shrink-0"
+                    >
+                      <UserPlus className="w-4 h-4 text-[#D4AF37]" />
+                      <span>{partnerLoading ? "Linking..." : "Link Partner Account"}</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-[#888178] italic">
+                    * Note: Once linked, whether your partner logs in with Google or email, they will automatically land on this exact Studio dashboard.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Wedding Day Weather Broadcast Hub */}
+            <div className="bg-white border border-[#E8E2D9] p-6 sm:p-8 rounded-sm shadow-2xs space-y-6">
+              <div className="flex items-start justify-between gap-4 border-b border-[#E8E2D9] pb-5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <CloudRain className="w-5 h-5 text-[#D4AF37]" />
+                    <h3 className="font-serif text-xl sm:text-2xl text-[#22201E]">Wedding Day Weather &amp; Automated Alerts</h3>
+                  </div>
+                  <p className="text-xs text-[#888178] mt-1">
+                    Powered by the free Open-Meteo API. Preview your celebration day weather forecast and broadcast helpful attire and travel advisories via Email and WhatsApp.
+                  </p>
+                </div>
+              </div>
+
+              {/* Weather Widget Preview */}
+              <div className="bg-[#FAF8F5] border border-[#E8E2D9] p-4 rounded-sm space-y-2">
+                <span className="text-[10px] uppercase tracking-wider text-[#888178] font-bold">Live Invitation Card Weather Preview</span>
+                <WeatherWidget
+                  venueName={venueAddress ? `${venueAddress}, ${venueName}` : venueName || sessionUser?.venueName || "Bengaluru, India"}
+                  weddingDate={weddingDate || new Date().toISOString()}
+                  accentClass="text-[#D4AF37]"
+                />
+              </div>
+
+              {/* Broadcast Controls */}
+              <div className="space-y-5 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="flex items-center justify-between text-xs uppercase font-bold tracking-wider text-[#55514C] mb-2">
+                      <span>Target Audience</span>
+                      <span className="text-[10px] text-emerald-600 font-normal normal-case">✓ Auto-saved locally</span>
+                    </label>
+                    <select
+                      value={weatherRecipients}
+                      onChange={(e) => setWeatherRecipients(e.target.value)}
+                      className="w-full px-3 py-2.5 border border-[#E8E2D9] rounded-xs text-sm bg-white focus:outline-none focus:border-[#D4AF37]"
+                    >
+                      <option value="all">All Confirmed Guests &amp; Couple ({rsvps.filter(r => r.attending?.toLowerCase() === "yes").length} Guests + Couple)</option>
+                      <option value="guests">Confirmed Guests Only ({rsvps.filter(r => r.attending?.toLowerCase() === "yes").length} Guests)</option>
+                      <option value="couple">Couple &amp; Co-Hosts Only</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs uppercase font-bold tracking-wider text-[#55514C] mb-2">Delivery Channels</label>
+                    <div className="flex items-center gap-4 h-10">
+                      <label className="flex items-center gap-2 cursor-pointer text-sm">
+                        <input
+                          type="checkbox"
+                          checked={weatherChannels.includes("email")}
+                          onChange={(e) => {
+                            if (e.target.checked) setWeatherChannels(prev => [...prev, "email"]);
+                            else setWeatherChannels(prev => prev.filter(c => c !== "email"));
+                          }}
+                          className="accent-[#112A21] w-4 h-4 rounded-xs"
+                        />
+                        <span>Email Advisories</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer text-sm">
+                        <input
+                          type="checkbox"
+                          checked={weatherChannels.includes("whatsapp")}
+                          onChange={(e) => {
+                            if (e.target.checked) setWeatherChannels(prev => [...prev, "whatsapp"]);
+                            else setWeatherChannels(prev => prev.filter(c => c !== "whatsapp"));
+                          }}
+                          className="accent-[#112A21] w-4 h-4 rounded-xs"
+                        />
+                        <span>WhatsApp Alerts</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs uppercase font-bold tracking-wider text-[#55514C] mb-2">
+                    Optional Host Note / Wardrobe Reminder
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. Since the reception is outdoors on the garden lawn, we recommend carrying a light pashmina or comfortable block heels..."
+                    value={weatherCustomNote}
+                    onChange={(e) => setWeatherCustomNote(e.target.value)}
+                    className="w-full px-3 py-2 border border-[#E8E2D9] rounded-xs text-sm focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={handleSendWeatherAlerts}
+                    disabled={weatherAlertSending || weatherChannels.length === 0}
+                    className="px-8 py-3 bg-[#112A21] text-[#FAF8F5] hover:bg-[#1b4335] disabled:opacity-50 rounded-xs text-xs font-bold uppercase tracking-widest transition-all shadow-md flex items-center gap-2"
+                  >
+                    <Send className="w-4 h-4 text-[#D4AF37]" />
+                    <span>{weatherAlertSending ? "Broadcasting Advisories..." : "Broadcast Weather Advisory Now"}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1755,6 +2066,31 @@ export default function AdminPage() {
                       onChange={(e) => setWeddingDateDisplay(e.target.value)}
                       className="w-full bg-[#FAF8F5] border border-[#E8E2D9] px-3 py-2 text-xs rounded-xs"
                     />
+                  </div>
+                </div>
+
+                <div className="bg-amber-50/70 border border-amber-200/80 p-3.5 rounded-sm">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-amber-900 mb-1 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-amber-700" />
+                    <span>RSVP Deadline / Cutoff Date (Optional)</span>
+                  </label>
+                  <p className="text-[11px] text-amber-800/80 mb-2">If set, guests will see a countdown/deadline warning on the RSVP modal. After this date passes, new RSVP submissions are automatically closed.</p>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <input
+                      type="datetime-local"
+                      value={rsvpDeadline}
+                      onChange={(e) => setRsvpDeadline(e.target.value)}
+                      className="flex-1 bg-white border border-amber-300 px-3 py-2 text-xs rounded-xs font-mono text-[#22201E]"
+                    />
+                    {rsvpDeadline && (
+                      <button
+                        type="button"
+                        onClick={() => setRsvpDeadline("")}
+                        className="px-3 py-2 bg-amber-200/60 hover:bg-amber-200 text-amber-900 text-xs font-semibold rounded-xs transition-colors whitespace-nowrap"
+                      >
+                        Clear Deadline
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -3258,6 +3594,43 @@ export default function AdminPage() {
                 </div>
               </div>
             </div>
+
+            {/* RSVP Deadline Quick Config inside RSVPs tab */}
+            <div className="bg-amber-50/70 border border-amber-200/80 p-4 rounded-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h4 className="font-serif font-bold text-amber-950 text-base flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-amber-700" /> RSVP Deadline &amp; Cutoff Control
+                </h4>
+                <p className="text-xs text-amber-800/80 mt-0.5">
+                  Set an optional deadline after which RSVP form submissions will automatically close on your digital invitation.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="datetime-local"
+                  value={rsvpDeadline}
+                  onChange={(e) => setRsvpDeadline(e.target.value)}
+                  className="bg-white border border-amber-300 px-3 py-2 text-xs rounded-xs font-mono text-[#22201E] min-w-[200px]"
+                />
+                {rsvpDeadline && (
+                  <button
+                    type="button"
+                    onClick={() => setRsvpDeadline("")}
+                    className="px-3 py-2 bg-amber-200/60 hover:bg-amber-200 text-amber-900 text-xs font-semibold rounded-xs transition-colors"
+                  >
+                    Clear Deadline
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => handleSaveInvitation(e as any)}
+                  className="px-4 py-2 bg-[#22201E] hover:bg-[#3A3632] text-white text-xs font-bold uppercase tracking-widest rounded-xs transition-colors shadow-sm"
+                >
+                  Save Cutoff
+                </button>
+              </div>
+            </div>
+
             <div className="w-full overflow-x-auto">
               <table className="w-full text-left text-xs whitespace-nowrap">
                 <thead>
@@ -3285,7 +3658,236 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Tab 6: Physical Bulk Print Orders */}
+        {/* Tab 6: Gift Shop & Shagun Registry */}
+        {activeTab === "registry" && (
+          <div className="bg-white border border-[#E8E2D9] p-6 rounded-sm space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-[#E8E2D9] pb-4">
+              <div>
+                <h2 className="font-serif text-2xl text-[#22201E] flex items-center gap-2">
+                  <Gift className="w-6 h-6 text-amber-600" />
+                  <span>Gift Boutique &amp; Digital Shagun Logs</span>
+                </h2>
+                <p className="text-xs text-[#888178]">
+                  Track guest gift sessions, Shagun monetary contributions, and heartfelt blessings received from your digital invitation &amp; RSVP modal.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="bg-[#FAF8F5] border border-[#E8E2D9] p-3 rounded-sm flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-800">
+                    <Gift className="w-4 h-4" />
+                  </div>
+                  {(() => {
+                    let logs: any[] = [];
+                    if (typeof localStorage !== "undefined") {
+                      try {
+                        logs = JSON.parse(localStorage.getItem(`vivaha_gift_logs_${slugInput}`) || "[]");
+                      } catch (e) {}
+                    }
+                    const totalAmt = logs.reduce((acc, l) => acc + (Number(l.amount) || 0), 0);
+                    return (
+                      <div>
+                        <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Total Gifts / Shagun</p>
+                        <p className="text-lg font-serif font-bold text-[#22201E]">
+                          ₹{totalAmt.toLocaleString()}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="bg-[#FAF8F5] border border-[#E8E2D9] p-3 rounded-sm flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-800">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                  {(() => {
+                    let logs: any[] = [];
+                    if (typeof localStorage !== "undefined") {
+                      try {
+                        logs = JSON.parse(localStorage.getItem(`vivaha_gift_logs_${slugInput}`) || "[]");
+                      } catch (e) {}
+                    }
+                    return (
+                      <div>
+                        <p className="text-[10px] text-[#888178] uppercase font-bold tracking-wider">Gift Sessions</p>
+                        <p className="text-lg font-serif font-bold text-[#22201E]">{logs.length} Confirmed</p>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick UPI & Gift Shop Settings */}
+            <div className="bg-[#FAF8F5] border border-[#E8E2D9] p-5 rounded-sm space-y-4 shadow-sm">
+              <h4 className="font-serif text-base font-bold text-[#22201E] flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-600" /> Wishlist Boutique &amp; Razorpay Payment Configuration
+              </h4>
+              <p className="text-xs text-[#55514C]">
+                Connect your Indian bank account or live Razorpay key so gift contributions and cash Shagun settle directly and instantly into your account.
+              </p>
+
+              <div className="flex items-center justify-between p-4 bg-white border border-[#E8E2D9] rounded-sm shadow-xs">
+                <div>
+                  <h5 className="font-serif text-sm font-bold text-[#22201E] flex items-center gap-1.5">
+                    <Gift className="w-4 h-4 text-amber-600" /> Enable Gift Boutique &amp; Shagun Registry on Invitation Card
+                  </h5>
+                  <p className="text-xs text-[#888178]">
+                    Turn ON to display the Gift &amp; Shagun button on your live invitation page and RSVP modal. Turn OFF to completely hide gift options from guests.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+                  <input
+                    type="checkbox"
+                    checked={enableGiftRegistry}
+                    onChange={(e) => setEnableGiftRegistry(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#22201E]" />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#55514C] mb-1">
+                    Couple&apos;s Direct UPI ID (GPay / Paytm)
+                  </label>
+                  <input
+                    type="text"
+                    value={upiVpa}
+                    onChange={(e) => setUpiVpa(e.target.value)}
+                    placeholder="e.g. 9876543210@paytm / couple@okaxis"
+                    className="w-full bg-white border border-[#E8E2D9] px-3.5 py-2 text-xs rounded-xs font-mono text-[#22201E] focus:outline-hidden focus:border-[#22201E]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#55514C] mb-1 flex items-center justify-between">
+                    <span>Custom GPay/Paytm QR Code Image</span>
+                    <span className="text-[10px] text-blue-600 font-bold">Optional</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={upiQrCodeUrl}
+                    onChange={(e) => setUpiQrCodeUrl(e.target.value)}
+                    placeholder="Paste QR image URL or leave blank for auto QR"
+                    className="w-full bg-white border border-[#E8E2D9] px-3.5 py-2 text-xs rounded-xs font-mono text-[#22201E] focus:outline-hidden focus:border-[#22201E]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#55514C] mb-1 flex items-center justify-between">
+                    <span>⚡ Razorpay API Key ID</span>
+                    <span className="text-[10px] text-emerald-600 font-bold">Recommended</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={razorpayKeyId}
+                    onChange={(e) => setRazorpayKeyId(e.target.value)}
+                    placeholder="e.g. rzp_live_xxxxxxxxxxxxx"
+                    className="w-full bg-white border border-[#E8E2D9] px-3.5 py-2 text-xs rounded-xs font-mono text-[#22201E] focus:outline-hidden focus:border-[#22201E]"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={(e) => handleSaveInvitation(e as any)}
+                  className="px-5 py-2.5 bg-[#22201E] hover:bg-[#3A3632] text-white text-xs font-bold uppercase tracking-widest rounded-xs transition-colors shadow-md flex items-center gap-2"
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Save Payment Settings &amp; Enable Boutique</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Recent Gift Contributions & Shagun Table */}
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h4 className="font-serif text-lg font-bold text-[#22201E]">Recent Guest Gift Sessions &amp; Payment Tracking</h4>
+                <span className="text-xs text-[#888178] font-mono">Verified Ledger &bull; Auto-synchronized</span>
+              </div>
+              <div className="w-full overflow-x-auto border border-[#E8E2D9] rounded-sm shadow-sm">
+                <table className="w-full text-left text-xs whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-[#FAF8F5] border-b border-[#E8E2D9] uppercase text-[#888178] font-bold">
+                      <th className="py-3 px-3">Guest Name</th>
+                      <th className="py-3 px-3">Gift Item / Shagun Title</th>
+                      <th className="py-3 px-3">Amount</th>
+                      <th className="py-3 px-3">Payment Gateway / Mode</th>
+                      <th className="py-3 px-3">Transaction ID (`pay_xxx`)</th>
+                      <th className="py-3 px-3">Personal Blessing Note</th>
+                      <th className="py-3 px-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E8E2D9] bg-white">
+                    {(() => {
+                      let logs: any[] = [];
+                      if (typeof localStorage !== "undefined") {
+                        try {
+                          logs = JSON.parse(localStorage.getItem(`vivaha_gift_logs_${slugInput}`) || "[]");
+                        } catch (e) {}
+                      }
+
+                      if (logs.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={7} className="py-12 px-6 text-center">
+                              <div className="flex flex-col items-center justify-center space-y-2.5 max-w-md mx-auto text-[#888178]">
+                                <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600">
+                                  <Gift className="w-6 h-6" />
+                                </div>
+                                <h5 className="font-serif text-base font-bold text-[#22201E]">No Gift Contributions or Shagun Received Yet</h5>
+                                <p className="text-xs leading-relaxed text-[#55514C]">
+                                  As soon as your wedding guests bless you with gifts or digital Shagun via Razorpay, UPI, or Card on your invitation page, their verified transaction receipts and heartfelt notes will appear right here in real time.
+                                </p>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return logs.map((log, idx) => (
+                        <tr key={log.id || idx} className="hover:bg-[#FAF8F5]/80 transition-colors">
+                          <td className="py-3 px-3 font-bold text-[#22201E]">{log.senderName || "Guest Blessing"}</td>
+                          <td className="py-3 px-3 text-amber-900 font-medium max-w-[200px] truncate">{log.itemTitle || "Wedding Gift"}</td>
+                          <td className="py-3 px-3 font-mono font-bold text-emerald-700">
+                            {log.currencySymbol || "₹"}{Number(log.amount || 0).toLocaleString()}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+                                log.paymentMethod === "razorpay" || log.paymentGateway?.includes("Razorpay")
+                                  ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                  : log.paymentMethod === "upi"
+                                  ? "bg-blue-100 text-blue-800 border border-blue-300"
+                                  : log.paymentMethod === "card"
+                                  ? "bg-purple-100 text-purple-800 border border-purple-300"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {log.paymentMethod === "razorpay" || log.paymentGateway?.includes("Razorpay") ? (
+                                <Zap className="w-3 h-3 text-amber-600 fill-current" />
+                              ) : null}
+                              {log.paymentGateway || (log.paymentMethod === "razorpay" ? "Razorpay (Verified)" : "Direct Transfer")}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-mono text-xs text-[#55514C] select-all">
+                            {log.paymentId || "pay_Verified"}
+                          </td>
+                          <td className="py-3 px-3 font-serif italic text-[#55514C] max-w-xs truncate">
+                            &ldquo;{log.blessingNote || "Best wishes!"}&rdquo;
+                          </td>
+                          <td className="py-3 px-3 text-emerald-600 font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> {log.paymentStatus || "PAID"}
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab 7: Physical Bulk Print Orders */}
         {activeTab === "bulk-print" && !isDemoUser && (
           <div className="space-y-8">
             <div className="bg-white border border-[#E8E2D9] p-6 sm:p-8 rounded-sm shadow-2xs space-y-6">

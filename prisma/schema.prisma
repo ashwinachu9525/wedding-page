@@ -24,7 +24,8 @@ model User {
   whatsappSessionId String?  // Stores the OpenWA session ID linked to this user
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
-  invitations   Invitation[]
+  invitations   Invitation[] @relation("InvitationOwner")
+  partnerInvitations Invitation[] @relation("InvitationPartner")
   whatsappLogs  WhatsappLog[]
 }
 
@@ -45,7 +46,10 @@ model Invitation {
   id            String       @id @default(cuid())
   slug          String       @unique
   userId        String?
-  user          User?        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User?        @relation("InvitationOwner", fields: [userId], references: [id], onDelete: Cascade)
+  partnerUserId String?
+  partnerUser   User?        @relation("InvitationPartner", fields: [partnerUserId], references: [id], onDelete: SetNull)
+  partnerEmail  String?
   title         String       @default("The Royal Wedding Celebration")
   coupleNames   String       @default("Rahul Sharma & Priya Mehta")
   brideDetails  String       @default("Daughter of Sri K. Ramachandran & Smt. Lakshmi Devi")
@@ -72,6 +76,7 @@ model Invitation {
   splitCoupleNames     Boolean          @default(false)
   enableEnvelope       Boolean          @default(false)
   envelopeTemplate     String           @default("classic-gold")
+  rsvpDeadline         String?          // Optional RSVP cutoff/end date (ISO string e.g. 2026-10-31T23:59:59)
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
   rsvps                Rsvp[]
@@ -164,4 +169,22 @@ model SystemConfig {
   updatedAt        DateTime @updatedAt
 
   @@map("system_config")
+}
+
+model Testimonial {
+  id         String   @id @default(cuid())
+  name       String   // Couple name e.g. "Ananya & Karthik Iyer"
+  venue      String   // Wedding venue
+  date       String   // Display date e.g. "March 2026"
+  quote      String   // The testimonial text
+  rating     Int      @default(5) // 1–5 stars
+  theme      String   @default("") // Theme name badge e.g. "Heritage Emerald"
+  themeColor String   @default("#22201E") // Badge background hex
+  textColor  String   @default("#FAF8F5") // Badge text hex
+  isVisible  Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("testimonials")
 }

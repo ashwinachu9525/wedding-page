@@ -47,41 +47,10 @@ export function useRazorpay({ coupleNames, userEmail, onSuccess, onFailure }: Us
         return;
       }
 
-      const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
-      const isMock = orderData.isMock || !keyId || keyId.includes("YOUR_KEY");
+      const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || orderData.keyId || "rzp_test_1DP5mmOlF5G5ag";
 
-      // Step 2: For mock/dev mode — simulate payment instantly
-      if (isMock) {
-        toast.info("⚙️ Dev Mode: Simulating Razorpay payment...", { duration: 1500 });
-        await new Promise((r) => setTimeout(r, 1500));
-
-        const mockPaymentId = `pay_mock_${Math.random().toString(36).slice(2, 12)}`;
-        const verifyRes = await fetch("/api/payment/razorpay-verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            razorpay_order_id: orderData.orderId,
-            razorpay_payment_id: mockPaymentId,
-            razorpay_signature: "mock_signature",
-            coupleNames,
-            userEmail,
-            amount: 499,
-            paymentMethod: "Mock / Dev",
-            isMock: true,
-          }),
-        });
-        const verifyData = await verifyRes.json();
-        if (verifyData.success) {
-          onSuccess(verifyData.paymentRecord);
-        } else {
-          toast.error("Mock payment verification failed.");
-          onFailure?.(verifyData.error);
-        }
-        return;
-      }
-
-      // Step 3: Real Razorpay Checkout
-      const options = {
+      // Step 2: Open Razorpay Test/Live Gateway directly
+      const options: any = {
         key: keyId,
         amount: orderData.amount,
         currency: orderData.currency,

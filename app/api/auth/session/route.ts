@@ -36,6 +36,24 @@ export async function GET(req: NextRequest) {
             coupleNames: true,
             venueName: true,
             weddingDate: true,
+            partnerUserId: true,
+            partnerEmail: true,
+            user: { select: { name: true, email: true } },
+            partnerUser: { select: { name: true, email: true } },
+          },
+          take: 1,
+        },
+        partnerInvitations: {
+          select: {
+            id: true,
+            slug: true,
+            coupleNames: true,
+            venueName: true,
+            weddingDate: true,
+            partnerUserId: true,
+            partnerEmail: true,
+            user: { select: { name: true, email: true } },
+            partnerUser: { select: { name: true, email: true } },
           },
           take: 1,
         },
@@ -49,7 +67,40 @@ export async function GET(req: NextRequest) {
       return res;
     }
 
-    let firstInvite = user.invitations?.[0];
+    let firstInvite = user.invitations?.[0] || user.partnerInvitations?.[0];
+
+    // Check if user is pending partner by email (`partnerEmail === user.email`)
+    if (!firstInvite && user.email) {
+      try {
+        const pendingPartnerInvite = await prisma.invitation.findFirst({
+          where: { partnerEmail: user.email.trim().toLowerCase() },
+          select: {
+            id: true,
+            slug: true,
+            coupleNames: true,
+            venueName: true,
+            weddingDate: true,
+            partnerUserId: true,
+            partnerEmail: true,
+            user: { select: { name: true, email: true } },
+            partnerUser: { select: { name: true, email: true } },
+          },
+        });
+        if (pendingPartnerInvite) {
+          await prisma.invitation.update({
+            where: { id: pendingPartnerInvite.id },
+            data: { partnerUserId: user.id },
+          });
+          firstInvite = {
+            ...pendingPartnerInvite,
+            partnerUserId: user.id,
+            partnerUser: { name: user.name, email: user.email },
+          };
+        }
+      } catch (e) {
+        console.warn("[session] Pending partner email linking failed:", e);
+      }
+    }
 
     // Orphan recovery: invitation was created before userId linking was fixed.
     // If the user has no linked invitations but the session JWT carries a slug,
@@ -58,7 +109,18 @@ export async function GET(req: NextRequest) {
       try {
         const orphan = await prisma.invitation.findUnique({
           where: { slug: session.slug },
-          select: { id: true, slug: true, coupleNames: true, venueName: true, weddingDate: true, userId: true },
+          select: {
+            id: true,
+            slug: true,
+            coupleNames: true,
+            venueName: true,
+            weddingDate: true,
+            userId: true,
+            partnerUserId: true,
+            partnerEmail: true,
+            user: { select: { name: true, email: true } },
+            partnerUser: { select: { name: true, email: true } },
+          },
         });
         if (orphan && !orphan.userId) {
           await prisma.invitation.update({
@@ -66,7 +128,7 @@ export async function GET(req: NextRequest) {
             data: { userId: user.id },
           });
           firstInvite = orphan;
-        } else if (orphan && orphan.userId === user.id) {
+        } else if (orphan && (orphan.userId === user.id || orphan.partnerUserId === user.id)) {
           firstInvite = orphan;
         }
       } catch (e) {
@@ -86,6 +148,9 @@ export async function GET(req: NextRequest) {
       coupleNames: firstInvite?.coupleNames || null,
       venueName: firstInvite?.venueName || null,
       weddingDate: firstInvite?.weddingDate || null,
+      partnerEmail: firstInvite?.partnerEmail || firstInvite?.partnerUser?.email || null,
+      partnerUser: firstInvite?.partnerUser || null,
+      ownerUser: firstInvite?.user || null,
       onboarded,
     };
 

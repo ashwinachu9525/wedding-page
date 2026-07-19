@@ -1,4 +1,4 @@
-const CACHE_NAME = "vivahaluxe-pwa-v1";
+const CACHE_NAME = "vivahaluxe-pwa-v2";
 const STATIC_ASSETS = [
   "/",
   "/favicon.ico",
@@ -41,10 +41,13 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
-          return caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, response.clone());
-            return response;
-          });
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return response;
         })
         .catch(() => {
           return caches.match(event.request).then((cachedResponse) => {
@@ -56,7 +59,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Stale-while-revalidate for static assets and scripts
+  // Stale-while-revalidate for static assets, styles, fonts, and scripts
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {

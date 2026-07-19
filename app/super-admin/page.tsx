@@ -71,7 +71,7 @@ export default function SuperAdminPage() {
 
   const [usersList, setUsersList] = useState<UserRecord[]>(INITIAL_DEMO_USERS);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeDirectoryTab, setActiveDirectoryTab] = useState<"overview" | "registered" | "demo" | "print-orders" | "pro-subscriptions" | "email-logs" | "system-errors">("overview");
+  const [activeDirectoryTab, setActiveDirectoryTab] = useState<"overview" | "registered" | "demo" | "print-orders" | "pro-subscriptions" | "email-logs" | "system-errors" | "testimonials">("overview");
   const [announcement, setAnnouncement] = useState("🎉 VivahaLuxe v2.0 Live: 12 New Royal Themes & CockroachDB Prisma Storage Engine deployed!");
   const [alertEnabled, setAlertEnabled] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
@@ -93,6 +93,16 @@ export default function SuperAdminPage() {
     linkUrl: "https://tanishq.co.in",
     ctaText: "Explore Bridal Collection",
   });
+
+  // Testimonials state
+  const [testimonialsList, setTestimonialsList] = useState<any[]>([]);
+  const [testimonialsAdminLoading, setTestimonialsAdminLoading] = useState(false);
+  const [newTestimonial, setNewTestimonial] = useState({
+    name: "", venue: "", date: "", quote: "", rating: 5,
+    theme: "", themeColor: "#22201E", textColor: "#FAF8F5",
+  });
+  const [savingTestimonial, setSavingTestimonial] = useState(false);
+  const [editingTestimonial, setEditingTestimonial] = useState<any | null>(null);
 
   // Modal states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -185,6 +195,9 @@ export default function SuperAdminPage() {
         }
       })
       .catch(console.error);
+
+    // Load Testimonials from DB
+    refreshTestimonials();
   }, [isAuthenticated]);
 
   const refreshSystemStats = async () => {
@@ -244,6 +257,104 @@ export default function SuperAdminPage() {
       toast.error("Failed to refresh email logs");
     } finally {
       setEmailLogsLoading(false);
+    }
+  };
+
+  const refreshTestimonials = async () => {
+    setTestimonialsAdminLoading(true);
+    try {
+      const res = await fetch("/api/super-admin/testimonials");
+      const data = await res.json();
+      if (data.success && Array.isArray(data.testimonials)) {
+        setTestimonialsList(data.testimonials);
+      }
+    } catch (e) {
+      toast.error("Failed to load testimonials");
+    } finally {
+      setTestimonialsAdminLoading(false);
+    }
+  };
+
+  const handleAddTestimonial = async () => {
+    if (!newTestimonial.name || !newTestimonial.quote) {
+      toast.error("Name and Quote are required.");
+      return;
+    }
+    setSavingTestimonial(true);
+    try {
+      const res = await fetch("/api/super-admin/testimonials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...newTestimonial, sortOrder: testimonialsList.length }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Testimonial added!");
+        setNewTestimonial({ name: "", venue: "", date: "", quote: "", rating: 5, theme: "", themeColor: "#22201E", textColor: "#FAF8F5" });
+        refreshTestimonials();
+      } else {
+        toast.error(data.error || "Failed to add testimonial");
+      }
+    } catch (e) {
+      toast.error("Failed to add testimonial");
+    } finally {
+      setSavingTestimonial(false);
+    }
+  };
+
+  const handleSaveEditTestimonial = async () => {
+    if (!editingTestimonial) return;
+    setSavingTestimonial(true);
+    try {
+      const res = await fetch(`/api/super-admin/testimonials/${editingTestimonial.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editingTestimonial),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Testimonial updated!");
+        setEditingTestimonial(null);
+        refreshTestimonials();
+      } else {
+        toast.error(data.error || "Failed to update");
+      }
+    } catch (e) {
+      toast.error("Failed to update testimonial");
+    } finally {
+      setSavingTestimonial(false);
+    }
+  };
+
+  const handleDeleteTestimonial = async (id: string) => {
+    if (!confirm("Delete this testimonial permanently?")) return;
+    try {
+      const res = await fetch(`/api/super-admin/testimonials/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Testimonial deleted.");
+        refreshTestimonials();
+      } else {
+        toast.error("Failed to delete.");
+      }
+    } catch (e) {
+      toast.error("Failed to delete testimonial");
+    }
+  };
+
+  const handleToggleVisibility = async (t: any) => {
+    try {
+      const res = await fetch(`/api/super-admin/testimonials/${t.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isVisible: !t.isVisible }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(t.isVisible ? "Hidden from homepage" : "Now visible on homepage");
+        refreshTestimonials();
+      }
+    } catch (e) {
+      toast.error("Failed to toggle visibility");
     }
   };
 
@@ -827,6 +938,16 @@ export default function SuperAdminPage() {
               <AlertCircle className="w-4 h-4" />
               <span>🚨 System Errors ({systemErrors.filter(e => e.status === "OPEN").length})</span>
             </button>
+            <button
+              onClick={() => { setActiveDirectoryTab("testimonials"); refreshTestimonials(); }}
+              className={`pb-3 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
+                activeDirectoryTab === "testimonials"
+                  ? "border-amber-400 text-amber-400"
+                  : "border-transparent text-gray-400 hover:text-white"
+              }`}
+            >
+              <span>⭐ Testimonials ({testimonialsList.length})</span>
+            </button>
           </div>
 
           {activeDirectoryTab === "overview" ? (
@@ -1070,6 +1191,267 @@ export default function SuperAdminPage() {
                   ))}
                 </div>
               )}
+            </div>
+          ) : activeDirectoryTab === "testimonials" ? (
+            <div className="space-y-8">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-serif text-white">⭐ Homepage Testimonials Manager</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">Add, edit, hide, or delete couple testimonials shown on the public homepage carousel.</p>
+                </div>
+                <button
+                  onClick={refreshTestimonials}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white text-xs rounded-xs border border-gray-700 transition-all"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Refresh
+                </button>
+              </div>
+
+              {/* ── Add New Testimonial Form ── */}
+              <div className="bg-gray-900 border border-gray-800 rounded-sm p-6 space-y-5">
+                <h4 className="text-sm font-bold text-amber-400 uppercase tracking-wider">
+                  {editingTestimonial ? "✏️ Edit Testimonial" : "➕ Add New Testimonial"}
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1">Couple Name *</label>
+                    <input
+                      type="text"
+                      value={editingTestimonial ? editingTestimonial.name : newTestimonial.name}
+                      onChange={(e) => editingTestimonial
+                        ? setEditingTestimonial({ ...editingTestimonial, name: e.target.value })
+                        : setNewTestimonial({ ...newTestimonial, name: e.target.value })
+                      }
+                      placeholder="e.g. Ananya & Karthik Iyer"
+                      className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs text-white rounded-xs focus:outline-hidden focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1">Wedding Venue</label>
+                    <input
+                      type="text"
+                      value={editingTestimonial ? editingTestimonial.venue : newTestimonial.venue}
+                      onChange={(e) => editingTestimonial
+                        ? setEditingTestimonial({ ...editingTestimonial, venue: e.target.value })
+                        : setNewTestimonial({ ...newTestimonial, venue: e.target.value })
+                      }
+                      placeholder="e.g. Taj Coromandel, Chennai"
+                      className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs text-white rounded-xs focus:outline-hidden focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1">Display Date</label>
+                    <input
+                      type="text"
+                      value={editingTestimonial ? editingTestimonial.date : newTestimonial.date}
+                      onChange={(e) => editingTestimonial
+                        ? setEditingTestimonial({ ...editingTestimonial, date: e.target.value })
+                        : setNewTestimonial({ ...newTestimonial, date: e.target.value })
+                      }
+                      placeholder="e.g. March 2026"
+                      className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs text-white rounded-xs focus:outline-hidden focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1">Star Rating (1–5)</label>
+                    <select
+                      value={editingTestimonial ? editingTestimonial.rating : newTestimonial.rating}
+                      onChange={(e) => editingTestimonial
+                        ? setEditingTestimonial({ ...editingTestimonial, rating: Number(e.target.value) })
+                        : setNewTestimonial({ ...newTestimonial, rating: Number(e.target.value) })
+                      }
+                      className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs text-white rounded-xs focus:outline-hidden focus:border-amber-400"
+                    >
+                      {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{n} Stars</option>)}
+                    </select>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1">Testimonial Quote *</label>
+                    <textarea
+                      rows={3}
+                      value={editingTestimonial ? editingTestimonial.quote : newTestimonial.quote}
+                      onChange={(e) => editingTestimonial
+                        ? setEditingTestimonial({ ...editingTestimonial, quote: e.target.value })
+                        : setNewTestimonial({ ...newTestimonial, quote: e.target.value })
+                      }
+                      placeholder="What did this couple say about VivahaLuxe?"
+                      className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs text-white rounded-xs focus:outline-hidden focus:border-amber-400 resize-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1">Theme Badge Label</label>
+                    <input
+                      type="text"
+                      value={editingTestimonial ? editingTestimonial.theme : newTestimonial.theme}
+                      onChange={(e) => editingTestimonial
+                        ? setEditingTestimonial({ ...editingTestimonial, theme: e.target.value })
+                        : setNewTestimonial({ ...newTestimonial, theme: e.target.value })
+                      }
+                      placeholder="e.g. Heritage Emerald (optional)"
+                      className="w-full bg-gray-950 border border-gray-800 px-3 py-2 text-xs text-white rounded-xs focus:outline-hidden focus:border-amber-400"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1">Badge BG Color</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={editingTestimonial ? editingTestimonial.themeColor : newTestimonial.themeColor}
+                          onChange={(e) => editingTestimonial
+                            ? setEditingTestimonial({ ...editingTestimonial, themeColor: e.target.value })
+                            : setNewTestimonial({ ...newTestimonial, themeColor: e.target.value })
+                          }
+                          className="w-9 h-9 rounded cursor-pointer border border-gray-700 bg-transparent"
+                        />
+                        <span className="text-xs text-gray-400 font-mono">
+                          {editingTestimonial ? editingTestimonial.themeColor : newTestimonial.themeColor}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wider text-gray-400 mb-1">Badge Text Color</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={editingTestimonial ? editingTestimonial.textColor : newTestimonial.textColor}
+                          onChange={(e) => editingTestimonial
+                            ? setEditingTestimonial({ ...editingTestimonial, textColor: e.target.value })
+                            : setNewTestimonial({ ...newTestimonial, textColor: e.target.value })
+                          }
+                          className="w-9 h-9 rounded cursor-pointer border border-gray-700 bg-transparent"
+                        />
+                        <span className="text-xs text-gray-400 font-mono">
+                          {editingTestimonial ? editingTestimonial.textColor : newTestimonial.textColor}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Preview badge */}
+                {(editingTestimonial?.theme || newTestimonial.theme) && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wider">Badge Preview:</span>
+                    <span
+                      className="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wide border"
+                      style={{
+                        background: editingTestimonial ? editingTestimonial.themeColor : newTestimonial.themeColor,
+                        color: editingTestimonial ? editingTestimonial.textColor : newTestimonial.textColor,
+                        borderColor: (editingTestimonial ? editingTestimonial.textColor : newTestimonial.textColor) + "40",
+                      }}
+                    >
+                      {editingTestimonial ? editingTestimonial.theme : newTestimonial.theme}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3 pt-2">
+                  {editingTestimonial ? (
+                    <>
+                      <button
+                        onClick={handleSaveEditTestimonial}
+                        disabled={savingTestimonial}
+                        className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold uppercase tracking-wider rounded-xs transition-all disabled:opacity-50"
+                      >
+                        {savingTestimonial ? "Saving..." : "Save Changes"}
+                      </button>
+                      <button
+                        onClick={() => setEditingTestimonial(null)}
+                        className="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold uppercase tracking-wider rounded-xs transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={handleAddTestimonial}
+                      disabled={savingTestimonial}
+                      className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold uppercase tracking-wider rounded-xs transition-all disabled:opacity-50"
+                    >
+                      {savingTestimonial ? "Adding..." : "➕ Add Testimonial"}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Existing Testimonials List ── */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Saved Testimonials ({testimonialsList.length})
+                </h4>
+                {testimonialsAdminLoading ? (
+                  <div className="text-xs text-gray-400 py-6 text-center animate-pulse">Loading testimonials...</div>
+                ) : testimonialsList.length === 0 ? (
+                  <div className="text-xs text-gray-500 py-8 text-center border border-dashed border-gray-800 rounded-sm">
+                    No testimonials yet. Add your first one above.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {testimonialsList.map((t, idx) => (
+                      <div
+                        key={t.id}
+                        className={`bg-gray-900 border rounded-sm p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-4 transition-all ${
+                          t.isVisible ? "border-gray-700" : "border-gray-800 opacity-60"
+                        }`}
+                      >
+                        <div className="flex-1 space-y-2 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-white text-sm">{t.name}</span>
+                            {!t.isVisible && (
+                              <span className="px-2 py-0.5 bg-gray-800 text-gray-400 text-[10px] font-semibold uppercase tracking-wider rounded-full border border-gray-700">
+                                Hidden
+                              </span>
+                            )}
+                            {t.theme && (
+                              <span
+                                className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border"
+                                style={{ background: t.themeColor, color: t.textColor, borderColor: t.textColor + "40" }}
+                              >
+                                {t.theme}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-amber-300">
+                            {"★".repeat(Math.min(5, t.rating))}{"☆".repeat(Math.max(0, 5 - t.rating))}
+                          </p>
+                          <p className="text-xs text-gray-300 italic leading-relaxed line-clamp-2">&ldquo;{t.quote}&rdquo;</p>
+                          <p className="text-[10px] text-gray-500">{t.venue} {t.date && `• ${t.date}`}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {/* Visibility toggle */}
+                          <button
+                            onClick={() => handleToggleVisibility(t)}
+                            className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-xs border transition-all ${
+                              t.isVisible
+                                ? "border-emerald-600 text-emerald-400 hover:bg-emerald-900/30"
+                                : "border-gray-700 text-gray-500 hover:border-emerald-600 hover:text-emerald-400"
+                            }`}
+                            title={t.isVisible ? "Click to hide from homepage" : "Click to show on homepage"}
+                          >
+                            {t.isVisible ? "👁 Visible" : "🚫 Hidden"}
+                          </button>
+                          {/* Edit */}
+                          <button
+                            onClick={() => setEditingTestimonial({ ...t })}
+                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-xs border border-blue-700 text-blue-400 hover:bg-blue-900/30 transition-all"
+                          >
+                            Edit
+                          </button>
+                          {/* Delete */}
+                          <button
+                            onClick={() => handleDeleteTestimonial(t.id)}
+                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-xs border border-red-800 text-red-400 hover:bg-red-900/30 transition-all"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           ) : activeDirectoryTab !== "print-orders" ? (
             <div className="overflow-x-auto">

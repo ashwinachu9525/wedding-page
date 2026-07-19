@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { PwaRegister } from "@/components/pwa/pwa-register";
+import { PwaOfflineBanner } from "@/components/pwa/pwa-offline-banner";
 import { GlobalMaintenanceBanner } from "@/components/GlobalMaintenanceBanner";
 import Script from "next/script";
 import "./globals.css";
@@ -90,6 +91,7 @@ export default function RootLayout({
         )}
       </head>
       <body className="min-h-full flex flex-col">
+        <PwaOfflineBanner />
         <GlobalMaintenanceBanner />
         {children}
         <PwaRegister />

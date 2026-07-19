@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getInvitationBySlug, InvitationData } from "@/lib/mock-storage";
-import { Sparkles, ArrowLeft, MessageCircle } from "lucide-react";
+import { Sparkles, ArrowLeft, MessageCircle, Gift } from "lucide-react";
 import { getFontPairingById } from "@/lib/fonts";
 
 import { Navbar } from "@/components/navbar/navbar";
@@ -14,9 +14,11 @@ import { EventSection } from "@/components/event/event";
 import { GallerySection } from "@/components/gallery/gallery";
 import { FooterSection } from "@/components/footer/footer";
 import { RSVPModal } from "@/components/rsvp/rsvp-modal";
+import { GiftRegistryModal } from "@/components/registry/gift-registry-modal";
 import { WeddingJsonLd } from "@/components/seo/json-ld";
 import AdBanner from "@/components/AdBanner";
 import { Envelope, EnvelopeTemplate } from "@/components/envelope/Envelope";
+import { PwaInstallButton } from "@/components/pwa/pwa-install-button";
 
 type ThemeKey =
   | "alabaster"
@@ -86,6 +88,7 @@ function InviteLandingContent() {
   const [invite, setInvite] = useState<InvitationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [rsvpOpen, setRsvpOpen] = useState(false);
+  const [registryOpen, setRegistryOpen] = useState(false);
 
   const handleOpenRSVP = () => setRsvpOpen(true);
 
@@ -330,6 +333,40 @@ function InviteLandingContent() {
         <GallerySection images={parsedGallery} accentClass={styles.accent} />
       </main>
 
+      {/* Royal Gift & Shagun Boutique Card */}
+      {Boolean(invite.enableGiftRegistry) && (
+        <section className="max-w-4xl mx-auto px-4 sm:px-8 py-6">
+          <div className="bg-gradient-to-r from-[#1E1C1A] via-[#262320] to-[#1E1C1A] border border-[#D4AF37]/40 p-6 sm:p-8 rounded-sm shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 text-[#FAF8F5]">
+            <div className="space-y-2 max-w-xl text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-1.5 text-[10px] uppercase tracking-[0.25em] text-[#D4AF37] font-semibold">
+                <Gift className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span>Wedding Wishlist &amp; Shagun</span>
+              </div>
+              <h3 className="font-serif text-2xl sm:text-3xl font-light text-white">
+                The Couple&apos;s Gift Boutique
+              </h3>
+              <p className="text-xs sm:text-sm text-[#C4B7A6] leading-relaxed font-light">
+                Your presence at our celebration is our greatest blessing. Should you wish to gift a token of affection, contribute to honeymoon adventures, or send digital Shagun, explore our curated boutique.
+              </p>
+            </div>
+            <div className="shrink-0 w-full md:w-auto">
+              <button
+                onClick={() => setRegistryOpen(true)}
+                className="w-full md:w-auto px-6 py-3.5 rounded-xs bg-gradient-to-r from-[#D4AF37] to-[#C59B27] hover:from-[#e3be47] hover:to-[#D4AF37] text-[#141210] text-xs uppercase tracking-widest font-bold shadow-lg transition-transform active:scale-98 flex items-center justify-center gap-2.5"
+              >
+                <Gift className="w-4 h-4 text-[#141210]" />
+                <span>Browse Gift Shop Session</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* PWA Offline Installation Guide Card */}
+      <section className="max-w-4xl mx-auto px-4 sm:px-8 py-8">
+        <PwaInstallButton variant="card" appName={`${invite.coupleNames}`} label="Install Celebration App" />
+      </section>
+
       {/* Free Plan Advertisement Banner — hidden for PRO accounts and demo users */}
       {!invite.isProUser && (invite as any).user?.email !== "demo@vivahaluxe.com" && !["rahul-priya-2026", "rahul-anjali", "arjun-meera-2026", "david-sarah-2026"].includes(invite.slug) && (
         <AdBanner slot="landing" className="max-w-4xl mx-auto my-8 px-4" />
@@ -352,6 +389,22 @@ function InviteLandingContent() {
         coupleNames={invite.coupleNames}
         buttonClass={styles.buttonBg}
         slug={invite.slug}
+        rsvpDeadline={invite.rsvpDeadline}
+        razorpayKeyId={invite.razorpayKeyId}
+        upiVpa={invite.upiVpa}
+        upiQrCodeUrl={invite.upiQrCodeUrl}
+        enableGiftRegistry={Boolean(invite.enableGiftRegistry)}
+      />
+
+      {/* Interactive Gift Registry Shop Modal */}
+      <GiftRegistryModal
+        open={registryOpen}
+        onOpenChange={setRegistryOpen}
+        coupleNames={invite.coupleNames}
+        slug={invite.slug}
+        razorpayKeyId={invite.razorpayKeyId}
+        upiVpa={invite.upiVpa}
+        upiQrCodeUrl={invite.upiQrCodeUrl}
       />
       </div>
     </Envelope>

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -23,6 +23,8 @@ import {
   Trash2,
   CheckCircle2,
   Crown,
+  Star,
+  Quote,
 } from "lucide-react";
 
 const DEMO_PRESETS = [
@@ -68,8 +70,37 @@ const DEMO_PRESETS = [
   },
 ];
 
+interface Testimonial {
+  id?: string;
+  name: string;
+  venue: string;
+  date: string;
+  quote: string;
+  rating: number;
+  theme: string;
+  themeColor: string;
+  textColor: string;
+}
+
 export default function VivahaLuxeHomepage() {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [testimonialsLoading, setTestimonialsLoading] = useState(false);
+
+  // Set mounted=true after first client paint — this makes server and client
+  // render identical HTML on first pass, preventing hydration mismatches.
+  useEffect(() => {
+    setMounted(true);
+    setTestimonialsLoading(true);
+    fetch("/api/testimonials")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setTestimonials(data);
+      })
+      .catch(() => {})
+      .finally(() => setTestimonialsLoading(false));
+  }, []);
 
   const handleSelectPresetToEdit = (themeKey: string, themeName: string) => {
     const isAuth = sessionStorage.getItem("admin_authenticated") === "true";
@@ -352,6 +383,130 @@ export default function VivahaLuxeHomepage() {
             ))}
           </div>
         </div>
+
+        {/* ── Testimonials Carousel ── */}
+        <div className="space-y-8 pt-4 border-t border-[#E8E2D9]">
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.25em] text-[#D4AF37] bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+              <Star className="w-3.5 h-3.5 fill-current" />
+              <span>Couple Stories</span>
+            </div>
+            <h2 className="font-serif text-3xl sm:text-4xl">Loved by Couples Across India</h2>
+            <p className="text-xs text-[#888178] max-w-md mx-auto">Real stories from couples who trusted VivahaLuxe to make their special day unforgettable.</p>
+          </div>
+
+          {/* Scrollable testimonials row */}
+          <div className="relative overflow-hidden">
+            {/* Stable server-rendered placeholder — same on both sides → no hydration mismatch */}
+            {!mounted ? (
+              <div className="flex gap-5 pb-4 overflow-x-auto">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex-none w-[85vw] sm:w-[420px] bg-white border border-[#E8E2D9] rounded-sm p-6 sm:p-8 space-y-4 shadow-md">
+                    <div className="flex gap-1">{Array.from({ length: 5 }).map((_, s) => <div key={s} className="w-3.5 h-3.5 rounded-full bg-[#E8E2D9]" />)}</div>
+                    <div className="space-y-2">
+                      <div className="h-3 bg-[#E8E2D9] rounded w-full" />
+                      <div className="h-3 bg-[#E8E2D9] rounded w-4/5" />
+                      <div className="h-3 bg-[#E8E2D9] rounded w-3/5" />
+                    </div>
+                    <div className="flex justify-between items-end pt-4 border-t border-[#E8E2D9]">
+                      <div className="space-y-1.5">
+                        <div className="h-3 bg-[#E8E2D9] rounded w-32" />
+                        <div className="h-2.5 bg-[#E8E2D9] rounded w-44" />
+                      </div>
+                      <div className="h-6 w-24 bg-[#E8E2D9] rounded" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Client-only dynamic section — runs after hydration, safe to differ */
+              <div
+                className="flex gap-5 pb-4 overflow-x-auto snap-x snap-mandatory scroll-smooth"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
+              >
+                {/* Loading skeletons */}
+                {testimonialsLoading && Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex-none w-[85vw] sm:w-[420px] snap-start bg-white border border-[#E8E2D9] rounded-sm p-6 sm:p-8 space-y-4 shadow-md animate-pulse">
+                    <div className="flex gap-1">{Array.from({ length: 5 }).map((_, s) => <div key={s} className="w-3.5 h-3.5 rounded-full bg-[#E8E2D9]" />)}</div>
+                    <div className="space-y-2">
+                      <div className="h-3 bg-[#E8E2D9] rounded w-full" />
+                      <div className="h-3 bg-[#E8E2D9] rounded w-4/5" />
+                      <div className="h-3 bg-[#E8E2D9] rounded w-3/5" />
+                    </div>
+                    <div className="flex justify-between items-end pt-4 border-t border-[#E8E2D9]">
+                      <div className="space-y-1.5">
+                        <div className="h-3 bg-[#E8E2D9] rounded w-32" />
+                        <div className="h-2.5 bg-[#E8E2D9] rounded w-44" />
+                      </div>
+                      <div className="h-6 w-24 bg-[#E8E2D9] rounded" />
+                    </div>
+                  </div>
+                ))}
+
+                {/* Dynamic testimonials from DB */}
+                {!testimonialsLoading && testimonials.length > 0 && testimonials.map((t, i) => (
+                  <div
+                    key={t.id || i}
+                    className="flex-none w-[85vw] sm:w-[420px] snap-start bg-white border border-[#E8E2D9] rounded-sm p-6 sm:p-8 flex flex-col justify-between space-y-5 shadow-md hover:shadow-xl hover:border-[#D4AF37] transition-all"
+                  >
+                    <div className="space-y-4">
+                      {/* Stars */}
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: Math.max(1, Math.min(5, t.rating)) }).map((_, s) => (
+                          <Star key={s} className="w-3.5 h-3.5 text-[#D4AF37] fill-current" />
+                        ))}
+                      </div>
+
+                      {/* Quote */}
+                      <div className="relative">
+                        <Quote className="absolute -top-1 -left-1 w-6 h-6 text-[#E8E2D9] fill-current" />
+                        <p className="font-serif text-sm sm:text-base text-[#22201E] leading-relaxed italic pl-5">
+                          &ldquo;{t.quote}&rdquo;
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Couple + Theme Badge */}
+                    <div className="flex items-end justify-between gap-3 pt-4 border-t border-[#E8E2D9]">
+                      <div>
+                        <p className="font-semibold text-sm text-[#22201E]">{t.name}</p>
+                        <p className="text-xs text-[#888178] flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3" />
+                          <span>{t.venue}</span>
+                        </p>
+                        {t.date && <p className="text-[10px] text-[#888178] mt-0.5 uppercase tracking-wider">{t.date}</p>}
+                      </div>
+                      {t.theme && (
+                        <span
+                          className="shrink-0 px-2.5 py-1 rounded-xs text-[10px] font-bold uppercase tracking-wide border"
+                          style={{ background: t.themeColor || "#22201E", color: t.textColor || "#FAF8F5", borderColor: (t.textColor || "#FAF8F5") + "40" }}
+                        >
+                          {t.theme}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Empty state */}
+                {!testimonialsLoading && testimonials.length === 0 && (
+                  <div className="w-full text-center py-10 text-[#888178] text-sm">
+                    No testimonials yet. Add them from the Super Admin panel.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Fade edges */}
+            <div className="pointer-events-none absolute top-0 left-0 w-12 h-full bg-gradient-to-r from-[#FAF8F5] to-transparent" />
+            <div className="pointer-events-none absolute top-0 right-0 w-12 h-full bg-gradient-to-l from-[#FAF8F5] to-transparent" />
+          </div>
+
+          {testimonials.length > 0 && (
+            <p className="text-center text-[10px] text-[#888178] uppercase tracking-widest">Scroll to see more stories →</p>
+          )}
+        </div>
+
 
         {/* Quick Portal Access Grid (SUPER ADMIN DETAILS COMPLETELY REMOVED) */}
         <div className="space-y-6 text-left pt-8 border-t border-[#E8E2D9]">

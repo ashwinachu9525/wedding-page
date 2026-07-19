@@ -12,14 +12,21 @@ export async function GET(req: Request) {
       if (slug) {
         const invite = await prisma.invitation.findUnique({
           where: { slug: slug.toLowerCase() },
-          include: { user: { select: { email: true } } },
+          include: {
+            user: { select: { email: true, name: true } },
+            partnerUser: { select: { email: true, name: true } },
+          },
         });
         if (!invite) return NextResponse.json(null);
 
-        // Check if owner has active PRO
+        // Check if owner or partner has active PRO
         let isProUser = false;
         try {
-          if (invite.user?.email) {
+          const emailsToCheck = [invite.user?.email, invite.partnerUser?.email, invite.partnerEmail]
+            .filter(Boolean)
+            .map(e => e!.trim().toLowerCase());
+
+          if (emailsToCheck.length > 0) {
             // Ensure table exists before querying
             await prisma.$executeRawUnsafe(`
               CREATE TABLE IF NOT EXISTS vivaha_pro_payments (
@@ -31,11 +38,16 @@ export async function GET(req: Request) {
                 created_at TIMESTAMPTZ DEFAULT NOW()
               )
             `);
-            const rows: any[] = await prisma.$queryRawUnsafe(
-              `SELECT tx_id FROM vivaha_pro_payments WHERE user_email = $1 AND status = 'Approved & Active' LIMIT 1`,
-              invite.user.email.trim().toLowerCase()
-            );
-            isProUser = Array.isArray(rows) && rows.length > 0;
+            for (const email of emailsToCheck) {
+              const rows: any[] = await prisma.$queryRawUnsafe(
+                `SELECT tx_id FROM vivaha_pro_payments WHERE user_email = $1 AND status = 'Approved & Active' LIMIT 1`,
+                email
+              );
+              if (Array.isArray(rows) && rows.length > 0) {
+                isProUser = true;
+                break;
+              }
+            }
           }
         } catch (proErr) {
           console.warn("[isProUser check failed]", proErr);
@@ -90,6 +102,7 @@ export async function POST(req: Request) {
       splitCoupleNames,
       enableEnvelope,
       envelopeTemplate,
+      rsvpDeadline,
     } = body;
 
     if (!slug) {
@@ -137,6 +150,7 @@ export async function POST(req: Request) {
             ...(splitCoupleNames !== undefined ? { splitCoupleNames: Boolean(splitCoupleNames) } : {}),
             ...(enableEnvelope !== undefined ? { enableEnvelope: Boolean(enableEnvelope) } : {}),
             ...(envelopeTemplate !== undefined ? { envelopeTemplate } : {}),
+            ...(rsvpDeadline !== undefined ? { rsvpDeadline: rsvpDeadline || null } : {}),
           },
           create: {
             slug,
@@ -165,6 +179,7 @@ export async function POST(req: Request) {
             splitCoupleNames: Boolean(splitCoupleNames),
             enableEnvelope: enableEnvelope !== undefined ? Boolean(enableEnvelope) : false,
             envelopeTemplate: envelopeTemplate || "classic-gold",
+            rsvpDeadline: rsvpDeadline || null,
           },
         });
         return NextResponse.json(saved);

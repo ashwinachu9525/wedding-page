@@ -9,6 +9,7 @@ export const SESSION_COOKIE = "vivaha_session";
 
 export interface SessionPayload {
   id?: string;
+  userId?: string;
   email: string;
   name?: string;
   role?: string;

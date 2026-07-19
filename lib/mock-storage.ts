@@ -28,6 +28,11 @@ export interface InvitationData {
   splitCoupleNames?: boolean;
   enableEnvelope?: boolean;
   envelopeTemplate?: string;
+  rsvpDeadline?: string;
+  razorpayKeyId?: string;
+  upiVpa?: string;
+  upiQrCodeUrl?: string;
+  enableGiftRegistry?: boolean;
 }
 
 const DEFAULT_INVITATIONS: InvitationData[] = [
@@ -222,6 +227,7 @@ export function saveOrUpdateInvitation(data: Partial<InvitationData> & { slug: s
       splitCoupleNames: Boolean(data.splitCoupleNames),
       enableEnvelope: Boolean(data.enableEnvelope),
       envelopeTemplate: data.envelopeTemplate || "classic-gold",
+      rsvpDeadline: data.rsvpDeadline || undefined,
     };
     memoryInvitations.push(newInv);
     return newInv;

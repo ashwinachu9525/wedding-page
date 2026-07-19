@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import Image from "next/image";
-import { Camera, X, ZoomIn, Sparkles, Filter } from "lucide-react";
+import { Camera, X, ZoomIn, Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 
 export interface GalleryImage {
   src: string;
@@ -26,8 +26,12 @@ export function GallerySection({
   ],
   accentClass = "text-[#D4AF37]",
 }: GallerySectionProps) {
-  const [selectedImg, setSelectedImg] = useState<string | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>("all");
+
+  // Touch tracking refs for swipe gesture
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   if (!images || images.length === 0) return null;
 
@@ -49,6 +53,49 @@ export function GallerySection({
       : normalizedImages.filter((img) => img.category === activeFilter);
 
   const categories = ["all", "ceremony", "reception", "portraits", "engagement"];
+
+  // Lightbox navigation
+  const goNext = useCallback(() => {
+    setSelectedIndex((prev) => {
+      if (prev === null) return null;
+      return (prev + 1) % filteredImages.length;
+    });
+  }, [filteredImages.length]);
+
+  const goPrev = useCallback(() => {
+    setSelectedIndex((prev) => {
+      if (prev === null) return null;
+      return (prev - 1 + filteredImages.length) % filteredImages.length;
+    });
+  }, [filteredImages.length]);
+
+  // Keyboard navigation in lightbox
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "ArrowRight") goNext();
+    if (e.key === "ArrowLeft") goPrev();
+    if (e.key === "Escape") setSelectedIndex(null);
+  }, [goNext, goPrev]);
+
+  // Touch swipe handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    // Only register horizontal swipe if it's clearly more horizontal than vertical
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 40) {
+      if (deltaX < 0) goNext(); // swipe left → next
+      else goPrev();            // swipe right → prev
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
+  };
+
+  const selectedImg = selectedIndex !== null ? filteredImages[selectedIndex] : null;
 
   return (
     <section id="gallery" className="py-20 px-4 sm:px-8 max-w-7xl mx-auto space-y-12">
@@ -84,7 +131,7 @@ export function GallerySection({
         {filteredImages.map((item, idx) => (
           <div
             key={item.src || idx}
-            onClick={() => item.src && setSelectedImg(item.src)}
+            onClick={() => item.src && setSelectedIndex(idx)}
             className="group relative aspect-4/3 rounded-sm overflow-hidden border border-current/15 cursor-pointer shadow-xs hover:shadow-xl transition-all bg-black/5"
           >
             {item.src ? (
@@ -114,21 +161,70 @@ export function GallerySection({
         ))}
       </div>
 
-      {/* Lightbox Modal */}
-      {selectedImg && (
+      {/* Lightbox Modal with Swipe + Arrow Navigation */}
+      {selectedImg && selectedIndex !== null && (
         <div
-          onClick={() => setSelectedImg(null)}
           className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setSelectedIndex(null)}
+          onKeyDown={handleKeyDown}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          tabIndex={0}
+          role="dialog"
+          aria-label="Image lightbox"
         >
+          {/* Close Button */}
           <button
-            onClick={() => setSelectedImg(null)}
+            onClick={(e) => { e.stopPropagation(); setSelectedIndex(null); }}
             className="absolute top-6 right-6 p-3 rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors z-50"
+            aria-label="Close lightbox"
           >
             <X className="w-6 h-6" />
           </button>
-          <div className="relative max-w-5xl max-h-[85vh] w-full h-full">
-            <Image src={selectedImg} alt="Expanded Lightbox View" fill className="object-contain" />
+
+          {/* Image Counter */}
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm text-white text-xs font-semibold uppercase tracking-widest px-4 py-1.5 rounded-full border border-white/20 z-50">
+            {selectedIndex + 1} / {filteredImages.length}
           </div>
+
+          {/* Prev Arrow */}
+          <button
+            onClick={(e) => { e.stopPropagation(); goPrev(); }}
+            className="absolute left-4 sm:left-8 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/15 hover:bg-white/30 text-white transition-all z-50 backdrop-blur-sm border border-white/20 active:scale-95"
+            aria-label="Previous image"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+
+          {/* Next Arrow */}
+          <button
+            onClick={(e) => { e.stopPropagation(); goNext(); }}
+            className="absolute right-4 sm:right-8 top-1/2 -translate-y-1/2 p-3 rounded-full bg-white/15 hover:bg-white/30 text-white transition-all z-50 backdrop-blur-sm border border-white/20 active:scale-95"
+            aria-label="Next image"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+
+          {/* Image */}
+          <div
+            className="relative max-w-5xl max-h-[80vh] w-full h-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Image src={selectedImg.src} alt={selectedImg.caption || "Expanded Lightbox View"} fill className="object-contain" />
+          </div>
+
+          {/* Caption */}
+          {selectedImg.caption && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-center z-50">
+              <p className="text-white font-serif text-lg">{selectedImg.caption}</p>
+              <p className="text-amber-300 text-[10px] uppercase tracking-widest mt-0.5">{selectedImg.category}</p>
+            </div>
+          )}
+
+          {/* Swipe hint on mobile */}
+          <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-white/30 text-[10px] uppercase tracking-widest sm:hidden">
+            Swipe to navigate
+          </p>
         </div>
       )}
     </section>

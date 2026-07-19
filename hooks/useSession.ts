@@ -16,6 +16,9 @@ export interface SessionUser {
   onboarded?: boolean;
   isDemo?: boolean;
   isSuperAdmin?: boolean;
+  partnerUserId?: string | null;
+  partnerEmail?: string | null;
+  partnerUser?: { name?: string | null; email?: string | null } | null;
 }
 
 interface UseSessionReturn {

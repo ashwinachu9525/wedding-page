@@ -32,6 +32,13 @@ export async function POST(req: Request) {
       if (!invitation) {
         return NextResponse.json({ error: "Invitation not found for slug: " + slug }, { status: 404 });
       }
+      if (invitation.rsvpDeadline) {
+        const deadlineDate = new Date(invitation.rsvpDeadline);
+        if (!isNaN(deadlineDate.getTime()) && new Date().getTime() > deadlineDate.getTime()) {
+          const formattedDate = deadlineDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+          return NextResponse.json({ error: `RSVP cutoff deadline (${formattedDate}) has passed.` }, { status: 403 });
+        }
+      }
       const rsvp = await prisma.rsvp.create({
         data: {
           invitationId: invitation.id,

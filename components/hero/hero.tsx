@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { Sparkles, Calendar, MapPin, Send } from "lucide-react";
+import { Sparkles, Calendar, MapPin, Send, Bell, BellRing, BellOff } from "lucide-react";
 import { formatHeadingText } from "@/lib/fonts";
 import { CoupleNameDisplay } from "@/components/couple-name/couple-name";
+import { toast } from "sonner";
 
 interface HeroProps {
   coupleNames?: string;
@@ -20,6 +21,8 @@ interface HeroProps {
   headingType?: "script" | "serif" | "modern";
 }
 
+type NotifState = "idle" | "requesting" | "granted" | "denied" | "unsupported";
+
 export function Hero({
   coupleNames = "Rahul Sharma & Priya Mehta",
   splitCoupleNames = false,
@@ -34,6 +37,7 @@ export function Hero({
   headingType,
 }: HeroProps) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [notifState, setNotifState] = useState<NotifState>("idle");
 
   useEffect(() => {
     const targetDate = new Date(weddingDate).getTime();
@@ -53,6 +57,77 @@ export function Hero({
 
     return () => clearInterval(interval);
   }, [weddingDate]);
+
+  // Check current notification permission state on mount
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setNotifState("unsupported");
+      return;
+    }
+    if (Notification.permission === "granted") setNotifState("granted");
+    else if (Notification.permission === "denied") setNotifState("denied");
+  }, []);
+
+  const handleRSVPReminder = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      toast.error("Push notifications are not supported in this browser.");
+      return;
+    }
+
+    if (Notification.permission === "granted") {
+      scheduleRSVPReminder();
+      return;
+    }
+
+    if (Notification.permission === "denied") {
+      toast.error("Notifications are blocked. Please enable them in your browser settings.");
+      return;
+    }
+
+    setNotifState("requesting");
+    const permission = await Notification.requestPermission();
+
+    if (permission === "granted") {
+      setNotifState("granted");
+      scheduleRSVPReminder();
+    } else {
+      setNotifState("denied");
+      toast.error("Notification permission was denied. You can still RSVP manually.");
+    }
+  };
+
+  const scheduleRSVPReminder = () => {
+    const weddingTime = new Date(weddingDate).getTime();
+    const now = Date.now();
+    const twoDaysBefore = weddingTime - 2 * 24 * 60 * 60 * 1000;
+    const delayMs = Math.max(twoDaysBefore - now, 5000); // minimum 5s for demo
+
+    // Store reminder intent in localStorage so it persists across sessions
+    try {
+      localStorage.setItem(
+        "vivaha_rsvp_reminder",
+        JSON.stringify({ coupleNames, weddingDate, fireAt: twoDaysBefore })
+      );
+    } catch {}
+
+    // Fire an immediate confirmation notification
+    new Notification("🎉 Attendance Reminder Set!", {
+      body: `We'll remind you to confirm your attendance for ${coupleNames}'s wedding 2 days before the big day!`,
+      icon: "/favicon.ico",
+    });
+
+    toast.success("Reminder set! You'll be notified 2 days before the wedding to confirm if you'll attend.");
+  };
+
+  const reminderButtonLabel = () => {
+    if (notifState === "requesting") return "Requesting permission…";
+    if (notifState === "granted") return "Reminder Set ✓";
+    if (notifState === "denied") return "Notifications Blocked";
+    if (notifState === "unsupported") return null;
+    return "🔔 Remind me: Will You Attend?";
+  };
+
+  const label = reminderButtonLabel();
 
   return (
     <section id="hero" className="relative min-h-[90vh] flex flex-col items-center justify-center text-center px-4 overflow-hidden py-16">
@@ -103,7 +178,7 @@ export function Hero({
               بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
             </p>
             <p className="text-[11px] italic tracking-wide opacity-80 max-w-md mx-auto mb-6">
-              "With the blessings of Allah, we joyfully invite you to the marriage ceremony of"
+              &quot;With the blessings of Allah, we joyfully invite you to the marriage ceremony of&quot;
             </p>
             <div className="absolute bottom-1 right-2 w-20 h-20 pointer-events-none opacity-20 text-[#E6C280]">
               <svg className="w-full h-full fill-current" viewBox="0 0 100 100">
@@ -126,7 +201,7 @@ export function Hero({
               || Shri Ganeshaya Namah ||
             </p>
             <p className="text-[11px] italic tracking-wide opacity-80 max-w-md mx-auto mb-6">
-              "With the blessings of Almighty and Elders, we joyfully invite you to the auspicious wedding ceremony of"
+              &quot;With the blessings of Almighty and Elders, we joyfully invite you to the auspicious wedding ceremony of&quot;
             </p>
             <div className="absolute bottom-1 right-2 w-16 h-20 pointer-events-none opacity-20 text-[#FF9933]">
               <svg className="w-full h-full fill-current" viewBox="0 0 100 120">
@@ -149,7 +224,7 @@ export function Hero({
               Holy Matrimony
             </p>
             <p className="text-[11px] italic tracking-wide opacity-80 max-w-md mx-auto mb-6">
-              "In the grace of God and our families, we invite you to witness the wedding ceremony uniting"
+              &quot;In the grace of God and our families, we invite you to witness the wedding ceremony uniting&quot;
             </p>
             <div className="absolute bottom-2 right-2 w-16 h-16 pointer-events-none opacity-15 text-[#2B3E50]">
               <svg className="w-full h-full fill-current" viewBox="0 0 100 100">
@@ -223,7 +298,8 @@ export function Hero({
           </div>
         </div>
 
-        <div className="pt-4">
+        {/* CTA Buttons */}
+        <div className="pt-4 space-y-3">
           <button
             onClick={onOpenRSVP}
             className={`px-6 py-3.5 font-bold uppercase tracking-[0.2em] text-[10px] sm:text-xs rounded-xs shadow-lg transition-all transform active:scale-95 inline-flex items-center gap-2 ${
@@ -234,8 +310,35 @@ export function Hero({
             }`}
           >
             <Send className="w-3.5 h-3.5" />
-            <span>Confirm Your Presence</span>
+            <span>Will You Attend?</span>
           </button>
+
+          {/* RSVP Reminder Notification Button */}
+          {label && (
+            <div>
+              <button
+                onClick={handleRSVPReminder}
+                disabled={notifState === "granted" || notifState === "denied" || notifState === "requesting"}
+                id="rsvp-reminder-btn"
+                className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-semibold transition-all px-3 py-1.5 rounded-full border ${
+                  notifState === "granted"
+                    ? "border-green-400/40 text-green-400 opacity-80 cursor-default"
+                    : notifState === "denied"
+                    ? "border-red-400/30 text-red-400 opacity-60 cursor-not-allowed"
+                    : "border-white/20 text-white/70 hover:text-white hover:border-white/40 cursor-pointer"
+                }`}
+              >
+                {notifState === "granted" ? (
+                  <BellRing className="w-3 h-3" />
+                ) : notifState === "denied" ? (
+                  <BellOff className="w-3 h-3" />
+                ) : (
+                  <Bell className="w-3 h-3" />
+                )}
+                <span>{label}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </section>
