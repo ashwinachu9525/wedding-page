@@ -40,7 +40,7 @@ function getMapEmbedUrl(rawUrl: string): string | null {
     // Extract query param "q" if present
     const q = url.searchParams.get("q") || url.searchParams.get("query");
     if (q) {
-      return `https://www.google.com/maps/embed/v1/place?key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY&q=${encodeURIComponent(q)}`;
+      return `https://www.google.com/maps?q=${encodeURIComponent(q)}`;
     }
 
     // Extract coordinates from pathname like /@lat,lng,zoom or /place/.../@lat,lng
